@@ -146,6 +146,10 @@ public class Message {
         return new Message(Type.SYSTEM_MESSAGE, message);
     }
 
+    public static Message gameStart(String roleAssignments) {
+        return new Message(Type.GAME_START, roleAssignments);
+    }
+
     public static Message error(String errorMsg) {
         return new Message(Type.ERROR, errorMsg);
     }

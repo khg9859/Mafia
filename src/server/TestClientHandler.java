@@ -6,21 +6,22 @@ import java.io.*;
 import java.net.Socket;
 
 /**
- * 각 클라이언트별 전담 핸들러 (별도 스레드로 동작)
+ * 테스트 서버용 클라이언트 핸들러
+ * - 게임 시작 메시지 처리 추가
  */
-public class ClientHandler extends Thread {
+public class TestClientHandler extends Thread {
     private Socket socket;
     private BufferedReader in;
     private PrintWriter out;
-    private MafiaServer server;
-    private RoomManager roomManager;
+    private TestMafiaServer server;
+    private TestRoomManager roomManager;
 
     private String username;
     private String nickname;
     private int userId;
     private Integer currentRoomId = null;
 
-    public ClientHandler(Socket socket, MafiaServer server, RoomManager roomManager) {
+    public TestClientHandler(Socket socket, TestMafiaServer server, TestRoomManager roomManager) {
         this.socket = socket;
         this.server = server;
         this.roomManager = roomManager;
@@ -117,11 +118,18 @@ public class ClientHandler extends Thread {
     }
 
     /**
-     * 방 입장 처리
+     * 방 입장 처리 (테스트용: 2명까지만 입장 가능)
      */
     private void handleRoomJoin(Message msg) {
         try {
             int roomId = Integer.parseInt(msg.getData());
+
+            // 현재 방 인원 확인
+            int currentCount = roomManager.getClientCountInRoom(roomId);
+            if (currentCount >= 2) {
+                sendMessage(Message.roomJoinFailed("테스트 모드: 방이 가득 찼습니다 (최대 2명)"));
+                return;
+            }
 
             // DB에 방 입장 기록
             if (database.RoomDAO.joinRoom(roomId, userId)) {
@@ -130,7 +138,7 @@ public class ClientHandler extends Thread {
 
                 // 입장 성공 알림
                 database.RoomDAO.Room room = database.RoomDAO.getRoomById(roomId);
-                sendMessage(Message.roomJoinSuccess(roomId, room.roomName));
+                sendMessage(Message.roomJoinSuccess(roomId, room.roomName + " [테스트]"));
 
                 // 방의 플레이어 목록 전송
                 String playerList = roomManager.getPlayerListString(roomId);
@@ -140,9 +148,9 @@ public class ClientHandler extends Thread {
                 roomManager.broadcastToRoomExcept(roomId,
                     Message.playerJoined(nickname), this);
 
-                System.out.println("✅ " + nickname + " -> Room " + roomId + " 입장");
+                System.out.println("✅ " + nickname + " -> Room " + roomId + " 입장 (현재 인원: " + (currentCount + 1) + "/2)");
             } else {
-                sendMessage(Message.roomJoinFailed("방이 가득 찼거나 입장할 수 없습니다."));
+                sendMessage(Message.roomJoinFailed("방 입장에 실패했습니다."));
             }
         } catch (NumberFormatException e) {
             sendMessage(Message.error("잘못된 방 ID"));
@@ -154,14 +162,8 @@ public class ClientHandler extends Thread {
      */
     private void handleRoomLeave() {
         if (currentRoomId != null) {
-            // DB에서 퇴장 처리
             database.RoomDAO.leaveRoom(currentRoomId, userId);
-
-            // 다른 플레이어들에게 퇴장 알림
-            roomManager.broadcastToRoom(currentRoomId,
-                Message.playerLeft(nickname));
-
-            // RoomManager에서 제거
+            roomManager.broadcastToRoom(currentRoomId, Message.playerLeft(nickname));
             roomManager.removeClientFromRoom(currentRoomId, this);
 
             System.out.println("✅ " + nickname + " <- Room " + currentRoomId + " 퇴장");
@@ -174,7 +176,6 @@ public class ClientHandler extends Thread {
      */
     private void handleChatMessage(Message msg) {
         if (currentRoomId != null) {
-            // 같은 방의 모든 클라이언트에게 브로드캐스트
             Message chatMsg = Message.chatMessage(nickname, msg.getData());
             roomManager.broadcastToRoom(currentRoomId, chatMsg);
             System.out.println("💬 [Room " + currentRoomId + "] " + nickname + ": " + msg.getData());
@@ -182,13 +183,14 @@ public class ClientHandler extends Thread {
     }
 
     /**
-     * 게임 시작 처리
+     * 게임 시작 처리 (테스트용)
      */
     private void handleGameStart() {
         if (currentRoomId != null) {
-            // 방의 모든 클라이언트에게 게임 시작 메시지 브로드캐스트
-            roomManager.broadcastToRoom(currentRoomId, Message.gameStart(""));
-            System.out.println("🎮 [Room " + currentRoomId + "] " + nickname + "이(가) 게임을 시작했습니다.");
+            System.out.println("🎮 게임 시작 요청 from " + nickname + " in Room " + currentRoomId);
+            roomManager.handleGameStart(currentRoomId, this);
+        } else {
+            sendMessage(Message.error("방에 입장하지 않았습니다."));
         }
     }
 
@@ -205,15 +207,12 @@ public class ClientHandler extends Thread {
      * 연결 종료 및 정리
      */
     private void cleanup() {
-        // 방에서 퇴장 처리
         if (currentRoomId != null) {
             handleRoomLeave();
         }
 
-        // 서버에서 클라이언트 제거
         server.removeClient(this);
 
-        // 소켓 종료
         try {
             if (in != null) in.close();
             if (out != null) out.close();

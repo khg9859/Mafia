@@ -10,16 +10,18 @@ public class RoomDAO {
     public static class Room {
         public int roomId;
         public String roomName;
+        public String channelName;
         public int maxPlayers;
         public int currentPlayers;
         public String gameStatus;
         public int createdBy;
         public Timestamp createdAt;
 
-        public Room(int roomId, String roomName, int maxPlayers, int currentPlayers,
+        public Room(int roomId, String roomName, String channelName, int maxPlayers, int currentPlayers,
                    String gameStatus, int createdBy, Timestamp createdAt) {
             this.roomId = roomId;
             this.roomName = roomName;
+            this.channelName = channelName;
             this.maxPlayers = maxPlayers;
             this.currentPlayers = currentPlayers;
             this.gameStatus = gameStatus;
@@ -41,6 +43,7 @@ public class RoomDAO {
                 Room room = new Room(
                     rs.getInt("room_id"),
                     rs.getString("room_name"),
+                    rs.getString("channel_name"),
                     rs.getInt("max_players"),
                     rs.getInt("current_players"),
                     rs.getString("game_status"),
@@ -51,6 +54,36 @@ public class RoomDAO {
             }
         } catch (SQLException e) {
             System.out.println("❌ 방 목록 조회 실패: " + e.getMessage());
+        }
+        return rooms;
+    }
+
+    // 특정 채널의 방 목록 조회
+    public static List<Room> getRoomsByChannel(String channelName) {
+        List<Room> rooms = new ArrayList<>();
+        String sql = "SELECT * FROM rooms WHERE channel_name = ? ORDER BY created_at DESC";
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setString(1, channelName);
+            ResultSet rs = pstmt.executeQuery();
+
+            while (rs.next()) {
+                Room room = new Room(
+                    rs.getInt("room_id"),
+                    rs.getString("room_name"),
+                    rs.getString("channel_name"),
+                    rs.getInt("max_players"),
+                    rs.getInt("current_players"),
+                    rs.getString("game_status"),
+                    rs.getInt("created_by"),
+                    rs.getTimestamp("created_at")
+                );
+                rooms.add(room);
+            }
+        } catch (SQLException e) {
+            System.out.println("❌ 채널별 방 목록 조회 실패: " + e.getMessage());
         }
         return rooms;
     }
@@ -69,6 +102,7 @@ public class RoomDAO {
                 return new Room(
                     rs.getInt("room_id"),
                     rs.getString("room_name"),
+                    rs.getString("channel_name"),
                     rs.getInt("max_players"),
                     rs.getInt("current_players"),
                     rs.getString("game_status"),

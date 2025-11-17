@@ -10,6 +10,10 @@ import java.util.List;
 public class LobbyPanel extends JPanel {
     private MainFrame frame;
     private GameClient client;
+    private String currentChannel = "1채널"; // 기본 채널
+    private JLabel channelLabel;
+    private JPanel roomListPanel;
+    private String fontName;
 
     public LobbyPanel(MainFrame frame, String nickname, GameClient client) {
         this.frame = frame;
@@ -19,7 +23,7 @@ public class LobbyPanel extends JPanel {
         setBackground(new Color(20, 20, 20));
 
         // ✅ OS별 폰트 자동 감지
-        String fontName = System.getProperty("os.name").toLowerCase().contains("mac")
+        this.fontName = System.getProperty("os.name").toLowerCase().contains("mac")
                 ? "Apple SD Gothic Neo" : "맑은 고딕";
 
         // 상단 네비게이션 바
@@ -54,9 +58,24 @@ public class LobbyPanel extends JPanel {
 
         navBar.add(Box.createHorizontalStrut(200));
 
-        JLabel channelLabel = new JLabel("랭크 채널");
+        channelLabel = new JLabel(currentChannel);
         channelLabel.setForeground(Color.LIGHT_GRAY);
         channelLabel.setFont(new Font(fontName, Font.PLAIN, 14));
+        channelLabel.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        channelLabel.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                showChannelSelector();
+            }
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                channelLabel.setForeground(Color.WHITE);
+            }
+            @Override
+            public void mouseExited(MouseEvent e) {
+                channelLabel.setForeground(Color.LIGHT_GRAY);
+            }
+        });
         navBar.add(channelLabel);
 
         JButton settingBtn = new JButton("⚙");
@@ -184,12 +203,28 @@ public class LobbyPanel extends JPanel {
             topButtons.add(b);
         }
 
-        JPanel roomList = new JPanel();
-        roomList.setLayout(new BoxLayout(roomList, BoxLayout.Y_AXIS));
-        roomList.setBackground(new Color(35, 35, 35));
+        roomListPanel = new JPanel();
+        roomListPanel.setLayout(new BoxLayout(roomListPanel, BoxLayout.Y_AXIS));
+        roomListPanel.setBackground(new Color(35, 35, 35));
 
         // ✅ DB에서 실제 방 목록 불러오기
-        List<RoomDAO.Room> rooms = RoomDAO.getAllRooms();
+        loadRoomsForChannel(currentChannel);
+
+        JScrollPane scrollPane = new JScrollPane(roomListPanel);
+        scrollPane.setBorder(null);
+        scrollPane.getViewport().setBackground(new Color(35, 35, 35));
+
+        rightPanel.add(topButtons, BorderLayout.NORTH);
+        rightPanel.add(scrollPane, BorderLayout.CENTER);
+
+        return rightPanel;
+    }
+
+    // 채널별 방 목록 로드
+    private void loadRoomsForChannel(String channelName) {
+        roomListPanel.removeAll();
+
+        List<RoomDAO.Room> rooms = RoomDAO.getRoomsByChannel(channelName);
         for (RoomDAO.Room roomData : rooms) {
             JPanel room = new JPanel(new BorderLayout());
             room.setMaximumSize(new Dimension(700, 60));
@@ -229,18 +264,32 @@ public class LobbyPanel extends JPanel {
                 }
             });
 
-            roomList.add(room);
-            roomList.add(Box.createRigidArea(new Dimension(0, 10)));
+            roomListPanel.add(room);
+            roomListPanel.add(Box.createRigidArea(new Dimension(0, 10)));
         }
 
-        JScrollPane scrollPane = new JScrollPane(roomList);
-        scrollPane.setBorder(null);
-        scrollPane.getViewport().setBackground(new Color(35, 35, 35));
+        roomListPanel.revalidate();
+        roomListPanel.repaint();
+    }
 
-        rightPanel.add(topButtons, BorderLayout.NORTH);
-        rightPanel.add(scrollPane, BorderLayout.CENTER);
+    // 채널 선택 다이얼로그
+    private void showChannelSelector() {
+        String[] channels = {"1채널", "2채널", "3채널", "랭크 채널"};
+        String selected = (String) JOptionPane.showInputDialog(
+            this,
+            "채널을 선택하세요:",
+            "채널 선택",
+            JOptionPane.PLAIN_MESSAGE,
+            null,
+            channels,
+            currentChannel
+        );
 
-        return rightPanel;
+        if (selected != null && !selected.equals(currentChannel)) {
+            currentChannel = selected;
+            channelLabel.setText(currentChannel);
+            loadRoomsForChannel(currentChannel);
+        }
     }
 
     // ✅ Retina 대응 이미지 스케일링

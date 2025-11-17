@@ -11,8 +11,10 @@ public class MainFrame extends JFrame {
     private LoginPanel loginPanel;
     private LobbyPanel lobbyPanel;
     private GameRoomPanel gameRoomPanel;
+    private GamePlayPanel gamePlayPanel;
 
     private GameClient gameClient;
+    private String currentNickname;
 
     public MainFrame() {
         // ✅ 1. 맥/윈도우 공통 UI 스타일 적용
@@ -50,6 +52,7 @@ public class MainFrame extends JFrame {
     // ✅ 로그인 성공 시 호출되는 메서드 (서버 연결 포함)
     public void showLobby(String nickname, int userId, String username) {
         System.out.println("➡ showLobby 호출됨: " + nickname);
+        this.currentNickname = nickname;
 
         // 서버에 연결
         gameClient = new GameClient();
@@ -72,9 +75,19 @@ public class MainFrame extends JFrame {
     // ✅ 방 입장 시 호출되는 메서드
     public void showGameRoom(int roomId, String roomName) {
         System.out.println("➡ showGameRoom 호출됨: " + roomName);
-        gameRoomPanel = new GameRoomPanel(this, roomId, roomName, gameClient);
+        gameRoomPanel = new GameRoomPanel(this, roomId, roomName, gameClient, currentNickname);
         mainPanel.add(gameRoomPanel, "gameroom");
         cardLayout.show(mainPanel, "gameroom");
+        mainPanel.revalidate();
+        mainPanel.repaint();
+    }
+
+    // ✅ 게임 시작 시 호출되는 메서드
+    public void showGamePlay(int roomId, String roomName, String myNickname, String myRole) {
+        System.out.println("➡ showGamePlay 호출됨: " + roomName + ", 역할: " + myRole);
+        gamePlayPanel = new GamePlayPanel(this, roomId, roomName, gameClient, myNickname, myRole);
+        mainPanel.add(gamePlayPanel, "gameplay");
+        cardLayout.show(mainPanel, "gameplay");
         mainPanel.revalidate();
         mainPanel.repaint();
     }

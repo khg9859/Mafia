@@ -13,6 +13,7 @@ DROP TABLE IF EXISTS `rooms`;
 CREATE TABLE `rooms` (
   `room_id` int NOT NULL AUTO_INCREMENT,
   `room_name` varchar(100) NOT NULL,
+  `channel_name` varchar(50) NOT NULL DEFAULT '일반 채널',
   `max_players` int NOT NULL DEFAULT 8,
   `current_players` int NOT NULL DEFAULT 0,
   `game_status` varchar(20) NOT NULL DEFAULT 'WAITING',
@@ -46,23 +47,15 @@ CREATE TABLE `room_players` (
 -- Insert sample rooms for testing
 --
 
-INSERT INTO `rooms` (`room_name`, `max_players`, `current_players`, `game_status`, `created_by`)
+INSERT INTO `rooms` (`room_name`, `channel_name`, `max_players`, `current_players`, `game_status`, `created_by`)
 VALUES
-  ('마피아42 테스트방', 8, 3, 'WAITING', 1),
-  ('초보자 환영방', 8, 5, 'WAITING', 1),
-  ('랭크 전용방', 12, 7, 'WAITING', 2),
-  ('빠른 게임방', 8, 2, 'WAITING', 2),
-  ('친선 게임방', 10, 4, 'WAITING', 3);
+  ('마피아42 테스트방', '1채널', 8, 0, 'WAITING', 1),
+  ('초보자 환영방', '1채널', 8, 0, 'WAITING', 1),
+  ('랭크 전용방', '랭크 채널', 8, 0, 'WAITING', 2),
+  ('빠른 게임방', '2채널', 8, 0, 'WAITING', 2),
+  ('친선 게임방', '3채널', 8, 0, 'WAITING', 3);
 
 --
--- Insert sample room players
+-- Clear room players (for testing)
 --
-
-INSERT INTO `room_players` (`room_id`, `user_id`, `player_role`, `is_alive`)
-VALUES
-  (1, 1, NULL, 1),
-  (1, 2, NULL, 1),
-  (1, 3, NULL, 1),
-  (2, 1, NULL, 1),
-  (2, 2, NULL, 1),
-  (2, 3, NULL, 1);
+-- Note: Room players will be added dynamically when users join rooms

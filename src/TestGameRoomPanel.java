@@ -1,4 +1,4 @@
-import client.GameClient;
+import client.TestGameClient;
 import protocol.Message;
 
 import javax.swing.*;
@@ -9,11 +9,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 게임방 내부 화면 - 마피아42 스타일
+ * 테스트용 게임방 패널 - TestGameClient 사용
  */
-public class GameRoomPanel extends JPanel implements GameClient.MessageListener {
-    private MainFrame frame;
-    private GameClient client;
+public class TestGameRoomPanel extends JPanel implements TestGameClient.MessageListener {
+    private TestMainFrame frame;
+    private TestGameClient client;
     private int roomId;
     private String roomName;
 
@@ -24,7 +24,6 @@ public class GameRoomPanel extends JPanel implements GameClient.MessageListener 
     private JButton startGameBtn;
     private String myNickname;
 
-    // 플레이어 슬롯 내부 클래스
     private class PlayerSlot extends JPanel {
         private JLabel iconLabel;
         private JLabel nicknameLabel;
@@ -36,14 +35,12 @@ public class GameRoomPanel extends JPanel implements GameClient.MessageListener 
             setPreferredSize(new Dimension(200, 80));
             setBorder(BorderFactory.createLineBorder(new Color(60, 60, 60), 2));
 
-            // 아이콘 (물음표)
             iconLabel = new JLabel("?");
             iconLabel.setFont(new Font(fontName, Font.BOLD, 40));
             iconLabel.setForeground(Color.GRAY);
             iconLabel.setPreferredSize(new Dimension(60, 60));
             iconLabel.setHorizontalAlignment(SwingConstants.CENTER);
 
-            // 닉네임
             nicknameLabel = new JLabel("빈 슬롯");
             nicknameLabel.setFont(new Font(fontName, Font.BOLD, 14));
             nicknameLabel.setForeground(Color.GRAY);
@@ -75,7 +72,7 @@ public class GameRoomPanel extends JPanel implements GameClient.MessageListener 
         }
     }
 
-    public GameRoomPanel(MainFrame frame, int roomId, String roomName, GameClient client, String myNickname) {
+    public TestGameRoomPanel(TestMainFrame frame, int roomId, String roomName, TestGameClient client, String myNickname) {
         this.frame = frame;
         this.roomId = roomId;
         this.roomName = roomName;
@@ -89,30 +86,25 @@ public class GameRoomPanel extends JPanel implements GameClient.MessageListener 
         String fontName = System.getProperty("os.name").toLowerCase().contains("mac")
                 ? "Apple SD Gothic Neo" : "맑은 고딕";
 
-        // 상단 헤더
         JPanel header = createHeader(fontName);
         add(header, BorderLayout.NORTH);
 
-        // 중앙 영역 (플레이어 슬롯 + 게임 시작 버튼)
         JPanel centerPanel = createCenterPanel(fontName);
         add(centerPanel, BorderLayout.CENTER);
 
-        // 하단 채팅 영역
         JPanel bottomPanel = createChatPanel(fontName);
         add(bottomPanel, BorderLayout.SOUTH);
 
-        // 메시지 리스너 등록
         client.addMessageListener(this);
     }
 
-    // 상단 헤더
     private JPanel createHeader(String fontName) {
         JPanel header = new JPanel(new BorderLayout());
         header.setBackground(new Color(30, 30, 30));
         header.setBorder(BorderFactory.createEmptyBorder(15, 20, 15, 20));
 
-        JLabel titleLabel = new JLabel("🎮 " + roomName);
-        titleLabel.setForeground(Color.WHITE);
+        JLabel titleLabel = new JLabel("🧪 " + roomName + " [테스트 모드]");
+        titleLabel.setForeground(Color.YELLOW);
         titleLabel.setFont(new Font(fontName, Font.BOLD, 20));
 
         JButton leaveBtn = new JButton("방 나가기");
@@ -131,35 +123,32 @@ public class GameRoomPanel extends JPanel implements GameClient.MessageListener 
         return header;
     }
 
-    // 중앙 패널 (플레이어 슬롯 + 게임 시작 버튼)
     private JPanel createCenterPanel(String fontName) {
         JPanel panel = new JPanel(new BorderLayout());
         panel.setBackground(new Color(25, 25, 25));
         panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 10, 20));
 
-        // 플레이어 슬롯 그리드 (4x2 = 8슬롯)
-        playerSlotsPanel = new JPanel(new GridLayout(4, 2, 15, 15));
+        // 테스트용: 2개 슬롯만 표시
+        playerSlotsPanel = new JPanel(new GridLayout(1, 2, 15, 15));
         playerSlotsPanel.setBackground(new Color(25, 25, 25));
 
-        // 8개 슬롯 생성
-        for (int i = 0; i < 8; i++) {
+        for (int i = 0; i < 2; i++) {
             PlayerSlot slot = new PlayerSlot(fontName);
             playerSlots.add(slot);
             playerSlotsPanel.add(slot);
         }
 
-        // 게임 시작 버튼
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
         buttonPanel.setBackground(new Color(25, 25, 25));
         buttonPanel.setBorder(BorderFactory.createEmptyBorder(15, 0, 10, 0));
 
-        startGameBtn = new JButton("게임 시작");
+        startGameBtn = new JButton("게임 시작 (테스트)");
         startGameBtn.setFont(new Font(fontName, Font.BOLD, 18));
-        startGameBtn.setBackground(new Color(220, 80, 80));
-        startGameBtn.setForeground(Color.WHITE);
+        startGameBtn.setBackground(new Color(220, 180, 80));
+        startGameBtn.setForeground(Color.BLACK);
         startGameBtn.setFocusPainted(false);
         startGameBtn.setOpaque(true);
-        startGameBtn.setPreferredSize(new Dimension(200, 50));
+        startGameBtn.setPreferredSize(new Dimension(250, 50));
         startGameBtn.setBorder(BorderFactory.createEmptyBorder());
 
         startGameBtn.addActionListener(e -> startGame());
@@ -172,14 +161,12 @@ public class GameRoomPanel extends JPanel implements GameClient.MessageListener 
         return panel;
     }
 
-    // 하단 채팅 영역
     private JPanel createChatPanel(String fontName) {
         JPanel panel = new JPanel(new BorderLayout());
         panel.setBackground(new Color(30, 30, 30));
         panel.setPreferredSize(new Dimension(0, 180));
         panel.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
 
-        // 채팅 히스토리
         chatArea = new JTextArea();
         chatArea.setEditable(false);
         chatArea.setLineWrap(true);
@@ -193,7 +180,6 @@ public class GameRoomPanel extends JPanel implements GameClient.MessageListener 
         chatScroll.setBorder(BorderFactory.createLineBorder(new Color(60, 60, 60)));
         chatScroll.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_ALWAYS);
 
-        // 입력 영역
         JPanel inputPanel = new JPanel(new BorderLayout(10, 0));
         inputPanel.setBackground(new Color(30, 30, 30));
         inputPanel.setBorder(BorderFactory.createEmptyBorder(10, 0, 0, 0));
@@ -217,10 +203,8 @@ public class GameRoomPanel extends JPanel implements GameClient.MessageListener 
         sendBtn.setPreferredSize(new Dimension(60, 35));
         sendBtn.setBorder(BorderFactory.createEmptyBorder());
 
-        // 전송 버튼 이벤트
         sendBtn.addActionListener(e -> sendChat());
 
-        // Enter 키로 전송
         chatInput.addKeyListener(new KeyAdapter() {
             @Override
             public void keyPressed(KeyEvent e) {
@@ -239,9 +223,6 @@ public class GameRoomPanel extends JPanel implements GameClient.MessageListener 
         return panel;
     }
 
-    /**
-     * 채팅 메시지 전송
-     */
     private void sendChat() {
         String message = chatInput.getText().trim();
         if (!message.isEmpty()) {
@@ -250,128 +231,16 @@ public class GameRoomPanel extends JPanel implements GameClient.MessageListener 
         }
     }
 
-    /**
-     * 게임 시작 요청
-     */
     private void startGame() {
-        // 현재 플레이어 수 확인
-        int playerCount = 0;
-        for (PlayerSlot slot : playerSlots) {
-            if (!slot.isEmpty()) {
-                playerCount++;
-            }
-        }
-
-        // TestConfig에서 최소 인원 확인
-        int minPlayers = TestConfig.getMinPlayers();
-
-        if (playerCount < minPlayers) {
-            JOptionPane.showMessageDialog(this,
-                "게임을 시작하려면 최소 " + minPlayers + "명이 필요합니다.\n현재 인원: " + playerCount + "명",
-                "인원 부족",
-                JOptionPane.WARNING_MESSAGE);
-            return;
-        }
-
-        if (playerCount > TestConfig.MAX_PLAYERS) {
-            JOptionPane.showMessageDialog(this,
-                "최대 인원을 초과했습니다. (최대 " + TestConfig.MAX_PLAYERS + "명)",
-                "인원 초과",
-                JOptionPane.WARNING_MESSAGE);
-            return;
-        }
-
-        // 서버에 게임 시작 요청
         client.requestGameStart();
     }
 
-    /**
-     * 게임 시작 처리 (서버로부터 GAME_START 메시지 수신 시)
-     */
-    private void handleGameStart() {
-        // 현재 플레이어 수 확인
-        int playerCount = 0;
-        for (PlayerSlot slot : playerSlots) {
-            if (!slot.isEmpty()) {
-                playerCount++;
-            }
-        }
-
-        // 역할 할당 (임시로 랜덤하게)
-        String myRole = assignRole(playerCount);
-
-        // 게임 플레이 화면으로 전환
-        client.removeMessageListener(this);
-        frame.showGamePlay(roomId, roomName, myNickname, myRole);
-    }
-
-    /**
-     * 역할 할당 (임시 구현 - 나중에 서버에서 처리)
-     */
-    private String assignRole(int playerCount) {
-        String[] roles;
-
-        if (playerCount <= 2) {
-            // 테스트용: 2명 - 마피아 1, 시민 1
-            roles = new String[]{"MAFIA", "CITIZEN"};
-        } else if (playerCount == 3) {
-            // 3명: 마피아 1, 경찰 1, 시민 1
-            roles = new String[]{"MAFIA", "POLICE", "CITIZEN"};
-        } else if (playerCount == 4) {
-            // 4명: 마피아 1, 경찰 1, 의사 1, 시민 1
-            roles = new String[]{"MAFIA", "POLICE", "DOCTOR", "CITIZEN"};
-        } else if (playerCount == 5) {
-            // 5명: 마피아 1, 경찰 1, 의사 1, 시민 2
-            roles = new String[]{"MAFIA", "POLICE", "DOCTOR", "CITIZEN", "CITIZEN"};
-        } else if (playerCount == 6) {
-            // 6명: 마피아 2, 경찰 1, 의사 1, 시민 2
-            roles = new String[]{"MAFIA", "MAFIA", "POLICE", "DOCTOR", "CITIZEN", "CITIZEN"};
-        } else if (playerCount == 7) {
-            // 7명: 마피아 2, 경찰 1, 의사 1, 특직 1, 시민 2
-            roles = new String[]{"MAFIA", "MAFIA", "POLICE", "DOCTOR", "SOLDIER", "CITIZEN", "CITIZEN"};
-        } else {
-            // 8명 클래식: 마피아2 + 의사1 + 경찰1 + 특직3 + 시민1
-            // 시민팀 특직 풀: 영매, 군인, 정치인, 건달, 기자, 사립탐정, 도굴꾼, 테러리스트, 성직자
-            String[] citizenSpecialRoles = {"MEDIUM", "SOLDIER", "POLITICIAN", "GANGSTER",
-                                           "REPORTER", "DETECTIVE", "GHOUL", "MARTYR", "PRIEST"};
-
-            java.util.List<String> selectedSpecials = new java.util.ArrayList<>();
-            java.util.List<String> availableSpecials = new java.util.ArrayList<>(java.util.Arrays.asList(citizenSpecialRoles));
-
-            // 3개의 시민팀 특직을 랜덤으로 선택
-            for (int i = 0; i < 3; i++) {
-                int randomIndex = (int)(Math.random() * availableSpecials.size());
-                selectedSpecials.add(availableSpecials.remove(randomIndex));
-            }
-
-            // 전체 역할 배열 생성: 마피아2 + 의사1 + 경찰1 + 특직3 + 시민1
-            java.util.List<String> allRoles = new java.util.ArrayList<>();
-            allRoles.add("MAFIA");
-            allRoles.add("MAFIA");
-            allRoles.add("DOCTOR");
-            allRoles.add("POLICE");
-            allRoles.addAll(selectedSpecials);
-            allRoles.add("CITIZEN");
-
-            roles = allRoles.toArray(new String[0]);
-        }
-
-        // 랜덤하게 하나 선택 (실제로는 서버에서 모든 플레이어에게 할당)
-        return roles[(int)(Math.random() * roles.length)];
-    }
-
-    /**
-     * 방 나가기
-     */
     private void leaveRoom() {
         client.leaveRoom();
         client.removeMessageListener(this);
         frame.switchTo("lobby");
     }
 
-    /**
-     * 서버로부터 메시지 수신 (콜백)
-     */
     @Override
     public void onMessageReceived(Message msg) {
         SwingUtilities.invokeLater(() -> {
@@ -406,16 +275,11 @@ public class GameRoomPanel extends JPanel implements GameClient.MessageListener 
         });
     }
 
-    /**
-     * 플레이어 목록 업데이트
-     */
     private void updatePlayerList(String playerData) {
-        // 모든 슬롯 초기화
         for (PlayerSlot slot : playerSlots) {
             slot.clearPlayer();
         }
 
-        // 플레이어 데이터 파싱
         if (playerData != null && !playerData.isEmpty()) {
             String[] players = playerData.split("\\|");
             for (int i = 0; i < players.length && i < playerSlots.size(); i++) {
@@ -424,9 +288,6 @@ public class GameRoomPanel extends JPanel implements GameClient.MessageListener 
         }
     }
 
-    /**
-     * 채팅 메시지 처리
-     */
     private void handleChatMessage(String data) {
         String[] parts = data.split("\\|", 2);
         if (parts.length == 2) {
@@ -436,19 +297,32 @@ public class GameRoomPanel extends JPanel implements GameClient.MessageListener 
         }
     }
 
-    /**
-     * 채팅 메시지 추가
-     */
     private void addChatMessage(String nickname, String message) {
         chatArea.append("[" + nickname + "] " + message + "\n");
         chatArea.setCaretPosition(chatArea.getDocument().getLength());
     }
 
-    /**
-     * 시스템 메시지 추가
-     */
     private void addSystemMessage(String message) {
         chatArea.append("📢 " + message + "\n");
         chatArea.setCaretPosition(chatArea.getDocument().getLength());
+    }
+
+    private void handleGameStart() {
+        int playerCount = 0;
+        for (PlayerSlot slot : playerSlots) {
+            if (!slot.isEmpty()) {
+                playerCount++;
+            }
+        }
+
+        String myRole = assignRole(playerCount);
+
+        client.removeMessageListener(this);
+        frame.showGamePlay(roomId, roomName, myNickname, myRole);
+    }
+
+    private String assignRole(int playerCount) {
+        String[] roles = {"MAFIA", "CITIZEN"};
+        return roles[(int)(Math.random() * roles.length)];
     }
 }

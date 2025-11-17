@@ -8,11 +8,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 게임 클라이언트 - 서버와 소켓 통신
+ * 테스트용 게임 클라이언트 - 포트 9998로 연결
  */
-public class GameClient {
+public class TestGameClient {
     private static final String SERVER_HOST = "localhost";
-    private static final int SERVER_PORT = 9999;
+    private static final int SERVER_PORT = 9998; // 테스트 서버 포트
 
     private Socket socket;
     private BufferedReader in;
@@ -48,7 +48,7 @@ public class GameClient {
             out = new PrintWriter(new OutputStreamWriter(socket.getOutputStream(), "UTF-8"), true);
             connected = true;
 
-            System.out.println("✅ 서버 연결 성공: " + SERVER_HOST + ":" + SERVER_PORT);
+            System.out.println("✅ 테스트 서버 연결 성공: " + SERVER_HOST + ":" + SERVER_PORT);
 
             // 로그인 메시지 전송
             sendMessage(Message.login(username, nickname + "|" + userId));
@@ -59,7 +59,7 @@ public class GameClient {
             return true;
 
         } catch (IOException e) {
-            System.out.println("❌ 서버 연결 실패: " + e.getMessage());
+            System.out.println("❌ 테스트 서버 연결 실패: " + e.getMessage());
             connected = false;
             return false;
         }
@@ -75,13 +75,13 @@ public class GameClient {
                 while (connected && (line = in.readLine()) != null) {
                     Message msg = Message.deserialize(line);
                     if (msg != null) {
-                        System.out.println("📩 서버로부터: " + msg);
+                        System.out.println("📩 테스트 서버로부터: " + msg);
                         notifyListeners(msg);
                     }
                 }
             } catch (IOException e) {
                 if (connected) {
-                    System.out.println("⚠️ 서버 연결 끊김: " + e.getMessage());
+                    System.out.println("⚠️ 테스트 서버 연결 끊김: " + e.getMessage());
                 }
             } finally {
                 disconnect();
@@ -97,9 +97,9 @@ public class GameClient {
     public void sendMessage(Message message) {
         if (out != null && connected) {
             out.println(message.serialize());
-            System.out.println("📤 서버로 전송: " + message);
+            System.out.println("📤 테스트 서버로 전송: " + message);
         } else {
-            System.out.println("⚠️ 서버 미연결 상태 - 메시지 전송 실패");
+            System.out.println("⚠️ 테스트 서버 미연결 상태 - 메시지 전송 실패");
         }
     }
 
@@ -150,7 +150,7 @@ public class GameClient {
             }
             if (in != null) in.close();
             if (out != null) out.close();
-            System.out.println("🔒 서버 연결 해제");
+            System.out.println("🔒 테스트 서버 연결 해제");
         } catch (IOException e) {
             e.printStackTrace();
         }
