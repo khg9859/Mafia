@@ -53,7 +53,7 @@ public class LobbyPanel extends JPanel {
         for (String m : menus) {
             JButton btn = new JButton(m);
             styleNavButton(btn, fontName);
-            
+
             // 내 정보 버튼 클릭 이벤트
             if (m.equals("내 정보")) {
                 btn.addActionListener(e -> showMyInfo());
@@ -62,7 +62,7 @@ public class LobbyPanel extends JPanel {
             } else if (m.equals("길드")) {
                 btn.addActionListener(e -> showGuild());
             }
-            
+
             navBar.add(btn);
         }
 
@@ -149,7 +149,7 @@ public class LobbyPanel extends JPanel {
         userInfo.add(rubleLabel);
         userInfo.add(Box.createRigidArea(new Dimension(0, 15)));
 
-        String[] icons = {"인벤토리", "우편함", "일일퀘스트","최후의 반론"};
+        String[] icons = {"인벤토리", "우편함","일일퀘스트","최후의 반론"};
         for (String icon : icons) {
             JButton btn = new JButton(icon);
             btn.setAlignmentX(Component.CENTER_ALIGNMENT);
@@ -160,7 +160,7 @@ public class LobbyPanel extends JPanel {
             btn.setFont(new Font(fontName, Font.PLAIN, 13));
             btn.setMaximumSize(new Dimension(250, 35));
             btn.setBorder(BorderFactory.createEmptyBorder());
-            
+
             // 버튼 이벤트
             if (icon.equals("인벤토리")) {
                 btn.addActionListener(e -> showInventory());
@@ -171,7 +171,7 @@ public class LobbyPanel extends JPanel {
             } else if (icon.equals("최후의 반론")) {
                 btn.addActionListener(e -> showForum());
             }
-            
+
             userInfo.add(btn);
             userInfo.add(Box.createRigidArea(new Dimension(0, 5)));
         }
