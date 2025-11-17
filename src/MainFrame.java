@@ -15,6 +15,8 @@ public class MainFrame extends JFrame {
 
     private GameClient gameClient;
     private String currentNickname;
+    private String currentUsername;
+    private int currentUserId;
 
     public MainFrame() {
         // ✅ 1. 맥/윈도우 공통 UI 스타일 적용
@@ -53,6 +55,8 @@ public class MainFrame extends JFrame {
     public void showLobby(String nickname, int userId, String username) {
         System.out.println("➡ showLobby 호출됨: " + nickname);
         this.currentNickname = nickname;
+        this.currentUsername = username;
+        this.currentUserId = userId;
 
         // 서버에 연결
         gameClient = new GameClient();
@@ -88,6 +92,36 @@ public class MainFrame extends JFrame {
         gamePlayPanel = new GamePlayPanel(this, roomId, roomName, gameClient, myNickname, myRole);
         mainPanel.add(gamePlayPanel, "gameplay");
         cardLayout.show(mainPanel, "gameplay");
+        mainPanel.revalidate();
+        mainPanel.repaint();
+    }
+
+    // ✅ 내 정보 화면으로 이동
+    public void showMyInfo(String nickname, int userId) {
+        System.out.println("➡ showMyInfo 호출됨: " + nickname);
+        MyInfoPanel myInfoPanel = new MyInfoPanel(this, nickname, userId);
+        mainPanel.add(myInfoPanel, "myinfo");
+        cardLayout.show(mainPanel, "myinfo");
+        mainPanel.revalidate();
+        mainPanel.repaint();
+    }
+
+    // ✅ 상점 화면으로 이동
+    public void showShop(String nickname, int userId) {
+        System.out.println("➡ showShop 호출됨: " + nickname);
+        ShopPanel shopPanel = new ShopPanel(this, nickname, userId, currentUsername);
+        mainPanel.add(shopPanel, "shop");
+        cardLayout.show(mainPanel, "shop");
+        mainPanel.revalidate();
+        mainPanel.repaint();
+    }
+
+    // ✅ 길드 화면으로 이동
+    public void showGuild(String nickname, int userId) {
+        System.out.println("➡ showGuild 호출됨: " + nickname);
+        GuildPanel guildPanel = new GuildPanel(this, nickname, userId, currentUsername);
+        mainPanel.add(guildPanel, "guild");
+        cardLayout.show(mainPanel, "guild");
         mainPanel.revalidate();
         mainPanel.repaint();
     }

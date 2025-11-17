@@ -10,6 +10,7 @@ import java.util.List;
 public class LobbyPanel extends JPanel {
     private MainFrame frame;
     private GameClient client;
+    private String nickname;
     private String currentChannel = "1채널"; // 기본 채널
     private JLabel channelLabel;
     private JPanel roomListPanel;
@@ -17,6 +18,7 @@ public class LobbyPanel extends JPanel {
 
     public LobbyPanel(MainFrame frame, String nickname, GameClient client) {
         this.frame = frame;
+        this.nickname = nickname;
         this.client = client;
 
         setLayout(new BorderLayout());
@@ -53,6 +55,16 @@ public class LobbyPanel extends JPanel {
         for (String m : menus) {
             JButton btn = new JButton(m);
             styleNavButton(btn, fontName);
+
+            // 버튼 이벤트 리스너 추가
+            if (m.equals("내 정보")) {
+                btn.addActionListener(e -> showMyInfo());
+            } else if (m.equals("상점")) {
+                btn.addActionListener(e -> showShop());
+            } else if (m.equals("길드")) {
+                btn.addActionListener(e -> showGuild());
+            }
+
             navBar.add(btn);
         }
 
@@ -312,5 +324,29 @@ public class LobbyPanel extends JPanel {
         // 실제로는 GameClient의 메시지 리스너에서 ROOM_JOIN_SUCCESS를 받아야 하지만
         // 간단하게 바로 이동
         frame.showGameRoom(roomId, roomName);
+    }
+
+    /**
+     * 내 정보 화면으로 이동
+     */
+    private void showMyInfo() {
+        System.out.println("📊 내 정보 화면으로 이동");
+        frame.showMyInfo(nickname, client.getUserId());
+    }
+
+    /**
+     * 상점 화면으로 이동
+     */
+    private void showShop() {
+        System.out.println("🛒 상점 화면으로 이동");
+        frame.showShop(nickname, client.getUserId());
+    }
+
+    /**
+     * 길드 화면으로 이동
+     */
+    private void showGuild() {
+        System.out.println("🏰 길드 화면으로 이동");
+        frame.showGuild(nickname, client.getUserId());
     }
 }
