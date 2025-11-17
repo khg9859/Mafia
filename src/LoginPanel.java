@@ -6,6 +6,17 @@ import database.DatabaseConnection;
 public class LoginPanel extends JPanel {
     private Image backgroundImage;
 
+    // 사용자 정보를 담는 내부 클래스
+    private static class UserInfo {
+        int userId;
+        String nickname;
+
+        UserInfo(int userId, String nickname) {
+            this.userId = userId;
+            this.nickname = nickname;
+        }
+    }
+
     public LoginPanel(MainFrame frame) {
         setLayout(new BorderLayout());
         setBackground(Color.BLACK);
@@ -56,10 +67,10 @@ public class LoginPanel extends JPanel {
             String username = idField.getText();
             String password = new String(pwField.getPassword());
 
-            if (authenticate(username, password)) {
+            UserInfo userInfo = authenticate(username, password);
+            if (userInfo != null) {
                 JOptionPane.showMessageDialog(frame, "로그인 성공!");
-                String nickname = getNickname(username);
-                frame.showLobby(nickname);
+                frame.showLobby(userInfo.nickname, userInfo.userId, username);
             } else {
                 JOptionPane.showMessageDialog(frame, "아이디 또는 비밀번호가 잘못되었습니다.");
             }
@@ -80,19 +91,21 @@ public class LoginPanel extends JPanel {
         add(rightPanel, BorderLayout.EAST);
     }
 
-    // ✅ DB 로그인 검증
-    private boolean authenticate(String username, String password) {
+    // ✅ DB 로그인 검증 - 사용자 정보 반환
+    private UserInfo authenticate(String username, String password) {
         try (Connection conn = DatabaseConnection.getConnection()) {
-            String sql = "SELECT * FROM user WHERE username=? AND password=?";
+            String sql = "SELECT user_id, nickname FROM user WHERE username=? AND password=?";
             PreparedStatement pstmt = conn.prepareStatement(sql);
             pstmt.setString(1, username);
             pstmt.setString(2, password);
             ResultSet rs = pstmt.executeQuery();
-            return rs.next();
+            if (rs.next()) {
+                return new UserInfo(rs.getInt("user_id"), rs.getString("nickname"));
+            }
         } catch (SQLException e) {
             e.printStackTrace();
-            return false;
         }
+        return null;
     }
 
     // ✅ 회원가입 다이얼로그

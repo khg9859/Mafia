@@ -1,9 +1,20 @@
+import client.GameClient;
+import database.RoomDAO;
+
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.util.List;
 
 public class LobbyPanel extends JPanel {
+    private MainFrame frame;
+    private GameClient client;
 
-    public LobbyPanel(MainFrame frame, String nickname) {
+    public LobbyPanel(MainFrame frame, String nickname, GameClient client) {
+        this.frame = frame;
+        this.client = client;
+
         setLayout(new BorderLayout());
         setBackground(new Color(20, 20, 20));
 
@@ -177,22 +188,46 @@ public class LobbyPanel extends JPanel {
         roomList.setLayout(new BoxLayout(roomList, BoxLayout.Y_AXIS));
         roomList.setBackground(new Color(35, 35, 35));
 
-        for (int i = 1; i <= 5; i++) {
+        // ✅ DB에서 실제 방 목록 불러오기
+        List<RoomDAO.Room> rooms = RoomDAO.getAllRooms();
+        for (RoomDAO.Room roomData : rooms) {
             JPanel room = new JPanel(new BorderLayout());
             room.setMaximumSize(new Dimension(700, 60));
             room.setBackground(new Color(45, 45, 45));
             room.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+            room.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 
-            JLabel roomTitle = new JLabel(i + ". 마피아42 테스트방");
+            JLabel roomTitle = new JLabel(roomData.roomId + ". " + roomData.roomName);
             roomTitle.setForeground(Color.WHITE);
             roomTitle.setFont(new Font(fontName, Font.PLAIN, 14));
 
-            JLabel roomCount = new JLabel("5/9", SwingConstants.CENTER);
-            roomCount.setForeground(Color.GREEN);
+            String countColor = roomData.currentPlayers >= roomData.maxPlayers ? "RED" : "GREEN";
+            JLabel roomCount = new JLabel(roomData.currentPlayers + "/" + roomData.maxPlayers, SwingConstants.CENTER);
+            roomCount.setForeground(countColor.equals("RED") ? Color.RED : Color.GREEN);
             roomCount.setFont(new Font(fontName, Font.PLAIN, 13));
 
             room.add(roomTitle, BorderLayout.WEST);
             room.add(roomCount, BorderLayout.EAST);
+
+            // ✅ 방 클릭 이벤트 - 방 입장
+            final int roomId = roomData.roomId;
+            final String roomName = roomData.roomName;
+            room.addMouseListener(new MouseAdapter() {
+                @Override
+                public void mouseClicked(MouseEvent e) {
+                    joinRoom(roomId, roomName);
+                }
+
+                @Override
+                public void mouseEntered(MouseEvent e) {
+                    room.setBackground(new Color(60, 60, 60));
+                }
+
+                @Override
+                public void mouseExited(MouseEvent e) {
+                    room.setBackground(new Color(45, 45, 45));
+                }
+            });
 
             roomList.add(room);
             roomList.add(Box.createRigidArea(new Dimension(0, 10)));
@@ -213,5 +248,20 @@ public class LobbyPanel extends JPanel {
         ImageIcon icon = new ImageIcon(path);
         Image scaled = icon.getImage().getScaledInstance(width, height, Image.SCALE_SMOOTH);
         return new ImageIcon(scaled);
+    }
+
+    /**
+     * 방 입장 처리
+     */
+    private void joinRoom(int roomId, String roomName) {
+        System.out.println("🚪 방 입장 시도: " + roomName + " (ID: " + roomId + ")");
+
+        // 서버에 방 입장 요청
+        client.joinRoom(roomId);
+
+        // 방 입장 성공 시 GameRoomPanel로 이동 (서버 응답 대기)
+        // 실제로는 GameClient의 메시지 리스너에서 ROOM_JOIN_SUCCESS를 받아야 하지만
+        // 간단하게 바로 이동
+        frame.showGameRoom(roomId, roomName);
     }
 }

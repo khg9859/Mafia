@@ -1,3 +1,5 @@
+import client.GameClient;
+
 import javax.swing.*;
 import java.awt.*;
 
@@ -8,6 +10,9 @@ public class MainFrame extends JFrame {
     private ChannelSelectPanel channelPanel;
     private LoginPanel loginPanel;
     private LobbyPanel lobbyPanel;
+    private GameRoomPanel gameRoomPanel;
+
+    private GameClient gameClient;
 
     public MainFrame() {
         // ✅ 1. 맥/윈도우 공통 UI 스타일 적용
@@ -42,18 +47,44 @@ public class MainFrame extends JFrame {
         setVisible(true);
     }
 
-    // ✅ 로그인 성공 시 호출되는 메서드
-    public void showLobby(String nickname) {
+    // ✅ 로그인 성공 시 호출되는 메서드 (서버 연결 포함)
+    public void showLobby(String nickname, int userId, String username) {
         System.out.println("➡ showLobby 호출됨: " + nickname);
-        lobbyPanel = new LobbyPanel(this, nickname);
-        mainPanel.add(lobbyPanel, "lobby");
-        cardLayout.show(mainPanel, "lobby");
+
+        // 서버에 연결
+        gameClient = new GameClient();
+        if (gameClient.connect(username, nickname, userId)) {
+            System.out.println("✅ 서버 연결 성공");
+            lobbyPanel = new LobbyPanel(this, nickname, gameClient);
+            mainPanel.add(lobbyPanel, "lobby");
+            cardLayout.show(mainPanel, "lobby");
+            mainPanel.revalidate();
+            mainPanel.repaint();
+        } else {
+            System.out.println("❌ 서버 연결 실패");
+            JOptionPane.showMessageDialog(this,
+                "서버에 연결할 수 없습니다.\n서버가 실행 중인지 확인하세요.",
+                "연결 실패",
+                JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    // ✅ 방 입장 시 호출되는 메서드
+    public void showGameRoom(int roomId, String roomName) {
+        System.out.println("➡ showGameRoom 호출됨: " + roomName);
+        gameRoomPanel = new GameRoomPanel(this, roomId, roomName, gameClient);
+        mainPanel.add(gameRoomPanel, "gameroom");
+        cardLayout.show(mainPanel, "gameroom");
         mainPanel.revalidate();
         mainPanel.repaint();
     }
 
     public void switchTo(String name) {
         cardLayout.show(mainPanel, name);
+    }
+
+    public GameClient getGameClient() {
+        return gameClient;
     }
 
     public static void main(String[] args) {
