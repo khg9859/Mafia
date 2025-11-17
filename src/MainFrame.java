@@ -83,6 +83,14 @@ public class MainFrame extends JFrame {
         cardLayout.show(mainPanel, name);
     }
 
+    // 동적으로 패널 전환
+    public void switchPanel(JPanel panel) {
+        mainPanel.removeAll();
+        mainPanel.add(panel);
+        mainPanel.revalidate();
+        mainPanel.repaint();
+    }
+
     public GameClient getGameClient() {
         return gameClient;
     }

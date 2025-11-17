@@ -6,9 +6,9 @@ import java.sql.SQLException;
 
 public class DatabaseConnection {
     // ✅ Mac 환경에서도 호환 가능한 JDBC URL (SSL 비활성 + 인코딩 명시)
-    private static final String URL = "jdbc:mysql://localhost:3306/mafia?serverTimezone=Asia/Seoul&useUnicode=true&characterEncoding=UTF-8&useSSL=false";
+    private static final String URL = "jdbc:mysql://localhost:3306/mafia?serverTimezone=Asia/Seoul&useUnicode=true&characterEncoding=UTF-8&useSSL=false&allowPublicKeyRetrieval=true";
     private static final String USER = "root";
-    private static final String PASSWORD = "1234";
+    private static final String PASSWORD = ""; // 비밀번호 없음
 
     private static Connection conn = null;
 

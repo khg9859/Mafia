@@ -10,7 +10,7 @@ public class ChannelSelectPanel extends JPanel {
         setBackground(Color.BLACK);
 
         // ✅ Retina 대응 이미지 스케일링
-        ImageIcon bgIcon = new ImageIcon("images/mafia42_left.png");
+        ImageIcon bgIcon = new ImageIcon("Mafia/images/mafia42_left.png");
         Image scaledBg = bgIcon.getImage().getScaledInstance(880, 720, Image.SCALE_SMOOTH);
         backgroundImage = scaledBg;
 
@@ -21,7 +21,7 @@ public class ChannelSelectPanel extends JPanel {
         rightPanel.setPreferredSize(new Dimension(400, 0));
 
         // ✅ 로고 이미지 (Retina 대응)
-        JLabel logo = new JLabel(scaleIcon("images/mafia42_logo.png", 260, 80));
+        JLabel logo = new JLabel(scaleIcon("Mafia/images/mafia42_logo.png", 260, 80));
         logo.setAlignmentX(Component.CENTER_ALIGNMENT);
         logo.setBorder(BorderFactory.createEmptyBorder(60, 0, 40, 0));
         rightPanel.add(logo);

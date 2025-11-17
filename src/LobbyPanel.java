@@ -10,10 +10,14 @@ import java.util.List;
 public class LobbyPanel extends JPanel {
     private MainFrame frame;
     private GameClient client;
+    private String nickname;
+    private int userId;
 
     public LobbyPanel(MainFrame frame, String nickname, GameClient client) {
         this.frame = frame;
         this.client = client;
+        this.nickname = nickname;
+        this.userId = client != null ? client.getUserId() : 1; // 임시로 1 사용
 
         setLayout(new BorderLayout());
         setBackground(new Color(20, 20, 20));
@@ -41,14 +45,24 @@ public class LobbyPanel extends JPanel {
         navBar.setBackground(new Color(30, 30, 30));
 
         // ✅ 로고 (Retina 대응)
-        JLabel logo = new JLabel(scaleIcon("images/mafia42_logo.png", 180, 50));
+        JLabel logo = new JLabel(scaleIcon("Mafia/images/mafia42_logo.png", 180, 50));
         navBar.add(logo);
 
         // 메뉴 버튼들
-        String[] menus = {"로비", "내 정보", "덱 설정", "상점", "길드"};
+        String[] menus = {"로비", "내 정보", "상점", "길드"};
         for (String m : menus) {
             JButton btn = new JButton(m);
             styleNavButton(btn, fontName);
+            
+            // 내 정보 버튼 클릭 이벤트
+            if (m.equals("내 정보")) {
+                btn.addActionListener(e -> showMyInfo());
+            } else if (m.equals("상점")) {
+                btn.addActionListener(e -> showShop());
+            } else if (m.equals("길드")) {
+                btn.addActionListener(e -> showGuild());
+            }
+            
             navBar.add(btn);
         }
 
@@ -104,7 +118,7 @@ public class LobbyPanel extends JPanel {
         userInfo.setBackground(new Color(25, 25, 25));
         userInfo.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
 
-        JLabel profileImg = new JLabel(scaleIcon("images/profile.png", 120, 120));
+        JLabel profileImg = new JLabel(scaleIcon("Mafia/images/profile.png", 120, 120));
         profileImg.setAlignmentX(Component.CENTER_ALIGNMENT);
 
         JLabel nameLabel = new JLabel(nickname, SwingConstants.CENTER);
@@ -135,7 +149,7 @@ public class LobbyPanel extends JPanel {
         userInfo.add(rubleLabel);
         userInfo.add(Box.createRigidArea(new Dimension(0, 15)));
 
-        String[] icons = {"인벤토리", "우편함", "선물함", "일일퀘스트", "마피아패스", "대부현황", "최후의 반론"};
+        String[] icons = {"인벤토리", "우편함", "일일퀘스트","최후의 반론"};
         for (String icon : icons) {
             JButton btn = new JButton(icon);
             btn.setAlignmentX(Component.CENTER_ALIGNMENT);
@@ -146,11 +160,23 @@ public class LobbyPanel extends JPanel {
             btn.setFont(new Font(fontName, Font.PLAIN, 13));
             btn.setMaximumSize(new Dimension(250, 35));
             btn.setBorder(BorderFactory.createEmptyBorder());
+            
+            // 버튼 이벤트
+            if (icon.equals("인벤토리")) {
+                btn.addActionListener(e -> showInventory());
+            } else if (icon.equals("우편함")) {
+                btn.addActionListener(e -> showMail());
+            } else if (icon.equals("일일퀘스트")) {
+                btn.addActionListener(e -> showDailyQuest());
+            } else if (icon.equals("최후의 반론")) {
+                btn.addActionListener(e -> showForum());
+            }
+            
             userInfo.add(btn);
             userInfo.add(Box.createRigidArea(new Dimension(0, 5)));
         }
 
-        JLabel adLabel = new JLabel(scaleIcon("images/ad_event.png", 250, 120));
+        JLabel adLabel = new JLabel(scaleIcon("Mafia/images/ad_event.png", 250, 120));
         adLabel.setHorizontalAlignment(SwingConstants.CENTER);
         adLabel.setBorder(BorderFactory.createEmptyBorder(10, 0, 10, 0));
 
@@ -263,5 +289,63 @@ public class LobbyPanel extends JPanel {
         // 실제로는 GameClient의 메시지 리스너에서 ROOM_JOIN_SUCCESS를 받아야 하지만
         // 간단하게 바로 이동
         frame.showGameRoom(roomId, roomName);
+    }
+
+    /**
+     * 내 정보 화면으로 이동
+     */
+    private void showMyInfo() {
+        MyInfoPanel myInfoPanel = new MyInfoPanel(frame, nickname, userId);
+        frame.switchPanel(myInfoPanel);
+    }
+
+    /**
+     * 상점 화면으로 이동
+     */
+    private void showShop() {
+        String username = client != null ? client.getUsername() : "guest";
+        ShopPanel shopPanel = new ShopPanel(frame, nickname, userId, username);
+        frame.switchPanel(shopPanel);
+    }
+
+    /**
+     * 길드 화면으로 이동
+     */
+    private void showGuild() {
+        String username = client != null ? client.getUsername() : "guest";
+        GuildPanel guildPanel = new GuildPanel(frame, nickname, userId, username);
+        frame.switchPanel(guildPanel);
+    }
+
+    /**
+     * 인벤토리 다이얼로그 표시
+     */
+    private void showInventory() {
+        InventoryDialog dialog = new InventoryDialog(frame);
+        dialog.setVisible(true);
+    }
+
+    /**
+     * 우편함 다이얼로그 표시
+     */
+    private void showMail() {
+        MailDialog dialog = new MailDialog(frame);
+        dialog.setVisible(true);
+    }
+
+    /**
+     * 일일 퀘스트 다이얼로그 표시
+     */
+    private void showDailyQuest() {
+        DailyQuestDialog dialog = new DailyQuestDialog(frame);
+        dialog.setVisible(true);
+    }
+
+    /**
+     * 최후의 변론 다이얼로그 표시
+     */
+    private void showForum() {
+        ForumDialog dialog = new ForumDialog(frame);
+        dialog.setVisible(true);
     }
 }
