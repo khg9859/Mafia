@@ -58,7 +58,16 @@ public class MainFrame extends JFrame {
         this.currentUsername = username;
         this.currentUserId = userId;
 
-        // 서버에 연결
+        // 이미 로비 패널이 있으면 단순히 CardLayout으로 전환
+        if (lobbyPanel != null && gameClient != null) {
+            System.out.println("✅ 기존 로비로 복귀");
+            cardLayout.show(mainPanel, "lobby");
+            mainPanel.revalidate();
+            mainPanel.repaint();
+            return;
+        }
+
+        // 서버에 연결 (처음 로그인할 때만)
         gameClient = new GameClient();
         if (gameClient.connect(username, nickname, userId)) {
             System.out.println("✅ 서버 연결 성공");

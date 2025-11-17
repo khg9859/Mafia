@@ -140,7 +140,7 @@ public class MyInfoPanel extends JPanel {
         // 마피아 이미지 로드
         JLabel profileIcon;
         try {
-            ImageIcon originalIcon = new ImageIcon("/Users/yongju/Desktop/test_hong/Mafia/images/info/default.png");
+            ImageIcon originalIcon = new ImageIcon("images/info/default.png");
             if (originalIcon.getIconWidth() > 0) {
                 Image scaledImage = originalIcon.getImage().getScaledInstance(200, 200, Image.SCALE_SMOOTH);
                 profileIcon = new JLabel(new ImageIcon(scaledImage), SwingConstants.CENTER);
@@ -326,7 +326,7 @@ public class MyInfoPanel extends JPanel {
 
     // 직업명에 따른 이미지 경로 반환
     private String getJobImagePath(String jobName) {
-        String basePath = "/Users/yongju/Desktop/test_hong/Mafia/images/info/";
+        String basePath = "images/info/";
         switch (jobName) {
             case "시민": return basePath + "simin.png";
             case "경찰": return basePath + "police.png";

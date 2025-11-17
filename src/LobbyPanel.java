@@ -177,6 +177,12 @@ public class LobbyPanel extends JPanel {
             btn.setFont(new Font(fontName, Font.PLAIN, 13));
             btn.setMaximumSize(new Dimension(250, 35));
             btn.setBorder(BorderFactory.createEmptyBorder());
+
+            // 인벤토리 버튼에 ActionListener 추가
+            if (icon.equals("인벤토리")) {
+                btn.addActionListener(e -> showInventory());
+            }
+
             userInfo.add(btn);
             userInfo.add(Box.createRigidArea(new Dimension(0, 5)));
         }
@@ -348,5 +354,14 @@ public class LobbyPanel extends JPanel {
     private void showGuild() {
         System.out.println("🏰 길드 화면으로 이동");
         frame.showGuild(nickname, client.getUserId());
+    }
+
+    /**
+     * 인벤토리 다이얼로그 표시
+     */
+    private void showInventory() {
+        System.out.println("📦 인벤토리 열기");
+        InventoryDialog dialog = new InventoryDialog(frame);
+        dialog.setVisible(true);
     }
 }
