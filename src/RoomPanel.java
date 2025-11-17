@@ -324,8 +324,8 @@ public class RoomPanel extends JPanel {
             e.printStackTrace();
             // 연결이 끊어진 경우에도 로비로 돌아가기
             SwingUtilities.invokeLater(() -> {
-                LobbyPanel lobbyPanel = new LobbyPanel(frame, nickname);
-                frame.switchPanel(lobbyPanel);
+                // TODO: Yong 브랜치의 구버전 코드 - 업데이트 필요
+                System.out.println("방 나가기 실패 - 로비로 복귀 필요");
             });
         }
     }
@@ -347,8 +347,8 @@ public class RoomPanel extends JPanel {
                     if (message.startsWith("/leave_success")) {
                         // 로비로 돌아가기
                         SwingUtilities.invokeLater(() -> {
-                            LobbyPanel lobbyPanel = new LobbyPanel(frame, nickname);
-                            frame.switchPanel(lobbyPanel);
+                            // TODO: Yong 브랜치의 구버전 코드 - 업데이트 필요
+                            System.out.println("방 나가기 성공 - 로비로 복귀 필요");
                         });
                         break;
                     } else if (message.startsWith("/player_joined ")) {
