@@ -46,9 +46,15 @@ public class MafiaGameServer extends JFrame {
     private Map<String, Integer> voteCount = new HashMap<>();
     private Map<String, String> nightActions = new HashMap<>(); // 밤 행동 저장
     private Map<String, Boolean> soldierShield = new HashMap<>(); // 군인의 방어막 상태 (true = 방어막 있음)
+    private Map<String, Boolean> blessedStatus = new HashMap<>(); // 성불 상태 (true = 성불됨)
     private boolean spyContactedMafia = false; // 스파이가 마피아와 접선했는지 여부
     private String mafiaName = ""; // 마피아 이름
     private String spyName = ""; // 스파이 이름
+    private String shamanName = ""; // 영매 이름
+    private String reporterTarget = ""; // 기자가 선택한 타겟
+    private String reporterTargetRole = ""; // 기자 타겟의 직업
+    private int nightCount = 0; // 밤 카운트 (기자 능력 사용 제한용)
+    private boolean reporterUsed = false; // 기자가 능력을 사용했는지 여부
 
     public static void main(String[] args) {
         EventQueue.invokeLater(new Runnable() {
@@ -172,7 +178,9 @@ public class MafiaGameServer extends JFrame {
         // 역할 구성 (4명: 마피아1, 의사1, 경찰1, 시민1)
         // 5명: 마피아2, 의사1, 경찰1, 정치인 또는 군인 1 (랜덤)
         // 6명: 마피아1, 스파이1, 의사1, 경찰1, 정치인1, 군인1
-        // 7명 이상: 마피아1, 스파이1, 의사1, 경찰1, 정치인1, 군인1, 시민 나머지
+        // 7명: 마피아1, 스파이1, 의사1, 경찰1, 정치인1, 군인1, 영매1
+        // 8명: 마피아1, 스파이1, 의사1, 경찰1, 정치인1, 군인1, 영매1, 기자1
+        // 9명 이상: 마피아1, 스파이1, 의사1, 경찰1, 정치인1, 군인1, 영매1, 기자1, 시민 나머지
 
         if (playerCount == 4) {
             roles.add("MAFIA");
@@ -197,6 +205,23 @@ public class MafiaGameServer extends JFrame {
             roles.add("POLICE");
             roles.add("POLITICIAN");
             roles.add("SOLDIER");
+        } else if (playerCount == 7) {
+            roles.add("MAFIA");
+            roles.add("SPY");
+            roles.add("DOCTOR");
+            roles.add("POLICE");
+            roles.add("POLITICIAN");
+            roles.add("SOLDIER");
+            roles.add("SHAMAN");
+        } else if (playerCount == 8) {
+            roles.add("MAFIA");
+            roles.add("SPY");
+            roles.add("DOCTOR");
+            roles.add("POLICE");
+            roles.add("POLITICIAN");
+            roles.add("SOLDIER");
+            roles.add("SHAMAN");
+            roles.add("REPORTER");
         } else {
             roles.add("MAFIA");
             roles.add("SPY");
@@ -204,7 +229,9 @@ public class MafiaGameServer extends JFrame {
             roles.add("POLICE");
             roles.add("POLITICIAN");
             roles.add("SOLDIER");
-            for (int i = 0; i < playerCount - 6; i++) {
+            roles.add("SHAMAN");
+            roles.add("REPORTER");
+            for (int i = 0; i < playerCount - 8; i++) {
                 roles.add("CITIZEN");
             }
         }
@@ -223,11 +250,13 @@ public class MafiaGameServer extends JFrame {
                 soldierShield.put(user.UserName, true);
             }
 
-            // 마피아와 스파이 이름 저장
+            // 마피아, 스파이, 영매 이름 저장
             if (role.equals("MAFIA")) {
                 mafiaName = user.UserName;
             } else if (role.equals("SPY")) {
                 spyName = user.UserName;
+            } else if (role.equals("SHAMAN")) {
+                shamanName = user.UserName;
             }
 
             String roleMsg = getRoleDescription(role);
@@ -251,6 +280,10 @@ public class MafiaGameServer extends JFrame {
                 return "당신은 [정치인]입니다. 투표로 죽지 않으며 2표를 행사합니다!";
             case "SOLDIER":
                 return "당신은 [군인]입니다. 마피아의 공격을 한 차례 버틸 수 있습니다!";
+            case "SHAMAN":
+                return "당신은 [영매]입니다. 죽은 자들의 대화를 보고 밤에 한 명을 성불시켜 직업을 알아낼 수 있습니다!";
+            case "REPORTER":
+                return "당신은 [기자]입니다. 2일차 밤부터 8일차 밤까지 한 명을 선택하여 다음 날 아침에 직업을 공개할 수 있습니다!";
             case "CITIZEN":
                 return "당신은 [시민]입니다. 낮 투표로 마피아를 찾아내세요!";
             default:
@@ -261,9 +294,12 @@ public class MafiaGameServer extends JFrame {
     // 밤 페이즈
     private void startNightPhase() {
         dayCount++;
+        nightCount++;
         gamePhase = "NIGHT";
         nightActions.clear();
-        
+        reporterTarget = ""; // 기자 타겟 초기화
+        reporterTargetRole = ""; // 기자 타겟 역할 초기화
+
         AppendText("===== " + dayCount + "일차 밤 =====");
         WriteAll("PHASE:NIGHT\n");
         WriteAll("SYSTEM: ===== " + dayCount + "일차 밤이 되었습니다 =====\n");
@@ -334,18 +370,25 @@ public class MafiaGameServer extends JFrame {
     // 낮 페이즈
     private void startDayPhase() {
         gamePhase = "DAY";
-        
+
         // 게임 종료 체크
         if (checkGameEnd()) {
             return;
         }
-        
+
         AppendText("===== " + dayCount + "일차 낮 =====");
         WriteAll("PHASE:DAY\n");
         WriteAll("SYSTEM: ===== " + dayCount + "일차 낮이 되었습니다 =====\n");
+
+        // 기자의 특종 발표
+        if (!reporterTarget.isEmpty() && !reporterTargetRole.isEmpty()) {
+            WriteAll("SYSTEM: 🔥 특종입니다. [" + reporterTarget + "]의 직업은 [" + reporterTargetRole + "]입니다! 🔥\n");
+            AppendText("기자 특종: " + reporterTarget + " -> " + reporterTargetRole);
+        }
+
         WriteAll("SYSTEM: 자유롭게 대화하고 의심되는 사람을 찾으세요.\n");
         WriteAll("SYSTEM: 30초 후 투표가 시작됩니다.\n");
-        
+
         sendAlivePlayerList();
         
         // 30초 대기 후 투표 페이즈로 전환
@@ -441,7 +484,6 @@ public class MafiaGameServer extends JFrame {
                 }
 
                 WriteAll("SYSTEM: [" + maxVotedPlayer + "]님이 투표로 제거되었습니다.\n");
-                WriteAll("SYSTEM: [" + maxVotedPlayer + "]님의 역할은 [" + eliminatedRole + "]였습니다.\n");
                 AppendText(maxVotedPlayer + " 제거됨 (역할: " + eliminatedRole + ")");
             }
         }
@@ -519,12 +561,15 @@ public class MafiaGameServer extends JFrame {
         }
     }
 
-    // 살아있는 플레이어 목록 전송
+    // 모든 플레이어 목록 전송 (살아있는지 죽었는지 표시)
     private void sendAlivePlayerList() {
         StringBuilder playerList = new StringBuilder("PLAYERS:");
         for (String player : aliveStatus.keySet()) {
             if (aliveStatus.get(player)) {
                 playerList.append(player).append(",");
+            } else {
+                // 죽은 플레이어는 [DEAD] 접두사 추가
+                playerList.append("[DEAD]").append(player).append(",");
             }
         }
         WriteAll(playerList.toString() + "\n");
@@ -637,6 +682,13 @@ public class MafiaGameServer extends JFrame {
                         if (parts.length == 3) {
                             String actionRole = parts[1];
                             String target = parts[2];
+
+                            // 영매를 제외한 모든 직업은 죽은 사람에게 스킬을 쓸 수 없음
+                            if (!actionRole.equals("SHAMAN") && aliveStatus.get(target) != null && !aliveStatus.get(target)) {
+                                WriteOne("SYSTEM: 죽은 사람에게는 능력을 사용할 수 없습니다!\n");
+                                return;
+                            }
+
                             nightActions.put(actionRole, target);
                             AppendText(UserName + "(" + role + ") -> " + target);
 
@@ -678,6 +730,41 @@ public class MafiaGameServer extends JFrame {
                                         break;
                                     }
                                 }
+                            } else if (actionRole.equals("SHAMAN")) {
+                                // 영매의 성불 능력
+                                for (UserService targetUser : UserVec) {
+                                    if (targetUser.UserName.equals(target)) {
+                                        // 죽은 사람만 성불 가능
+                                        if (aliveStatus.get(target) != null && !aliveStatus.get(target)) {
+                                            String targetRole = targetUser.role;
+                                            WriteOne("SYSTEM: [" + target + "]님을 성불시켰습니다. 직업은 [" + targetRole + "]였습니다!\n");
+                                            AppendText("영매 " + UserName + "이 " + target + " 성불 -> " + targetRole);
+                                            // 성불 상태 설정
+                                            blessedStatus.put(target, true);
+                                        } else {
+                                            WriteOne("SYSTEM: [" + target + "]님은 아직 살아있습니다!\n");
+                                        }
+                                        break;
+                                    }
+                                }
+                            } else if (actionRole.equals("REPORTER")) {
+                                // 기자의 특종 능력
+                                if (nightCount == 1) {
+                                    WriteOne("SYSTEM: 첫 번째 밤에는 기자 능력을 사용할 수 없습니다!\n");
+                                } else if (nightCount > 8) {
+                                    WriteOne("SYSTEM: 8일차 이후에는 기자 능력을 사용할 수 없습니다!\n");
+                                } else {
+                                    // 2일차~8일차 밤에만 사용 가능
+                                    for (UserService targetUser : UserVec) {
+                                        if (targetUser.UserName.equals(target)) {
+                                            reporterTarget = target;
+                                            reporterTargetRole = targetUser.role;
+                                            WriteOne("SYSTEM: [" + target + "]님을 취재했습니다. 내일 아침에 특종이 발표됩니다!\n");
+                                            AppendText("기자 " + UserName + "이 " + target + " 취재 -> 다음 낮에 공개");
+                                            break;
+                                        }
+                                    }
+                                }
                             } else {
                                 WriteOne("SYSTEM: 선택이 완료되었습니다.\n");
                             }
@@ -687,7 +774,16 @@ public class MafiaGameServer extends JFrame {
                         String[] parts = msg.split(":");
                         if (parts.length == 2) {
                             String target = parts[1];
-                            if (voteCount.containsKey(target)) {
+
+                            // 죽은 사람은 투표할 수 없음
+                            if (aliveStatus.get(UserName) != null && !aliveStatus.get(UserName)) {
+                                WriteOne("SYSTEM: 죽은 사람은 투표할 수 없습니다!\n");
+                            }
+                            // 죽은 사람에게 투표할 수 없음
+                            else if (aliveStatus.get(target) != null && !aliveStatus.get(target)) {
+                                WriteOne("SYSTEM: 죽은 사람에게는 투표할 수 없습니다!\n");
+                            }
+                            else if (voteCount.containsKey(target)) {
                                 // 정치인이면 2표, 그 외는 1표
                                 int votes = role.equals("POLITICIAN") ? 2 : 1;
                                 voteCount.put(target, voteCount.get(target) + votes);
@@ -700,7 +796,82 @@ public class MafiaGameServer extends JFrame {
                         return;
                     } else {
                         // 일반 채팅 메시지
-                        WriteAll(msg + "\n");
+                        if (gamePhase.equals("NIGHT")) {
+                            // 밤에는 마피아 팀과 죽은 플레이어만 채팅 가능
+                            if (aliveStatus.get(UserName) != null && !aliveStatus.get(UserName)) {
+                                // 죽은 플레이어의 채팅 (밤에도 가능, 성불당하지 않은 경우에만)
+                                if (blessedStatus.get(UserName) != null && blessedStatus.get(UserName)) {
+                                    WriteOne("SYSTEM: 성불당해서 채팅할 수 없습니다.\n");
+                                } else {
+                                    // 죽은 플레이어끼리 채팅 + 영매도 볼 수 있음
+                                    for (UserService user : UserVec) {
+                                        // 죽은 플레이어들에게 전송
+                                        if (aliveStatus.get(user.UserName) != null && !aliveStatus.get(user.UserName)) {
+                                            user.WriteOne("[DEAD CHAT] " + msg + "\n");
+                                        }
+                                        // 영매에게도 전송 (살아있는 영매만)
+                                        if (user.role.equals("SHAMAN") && (aliveStatus.get(user.UserName) == null || aliveStatus.get(user.UserName))) {
+                                            user.WriteOne("[DEAD CHAT] " + msg + "\n");
+                                        }
+                                    }
+                                    AppendText("[DEAD CHAT] " + msg);
+                                }
+                            } else if (role.equals("MAFIA")) {
+                                // 마피아는 항상 채팅 가능
+                                for (UserService user : UserVec) {
+                                    if (user.role.equals("MAFIA")) {
+                                        user.WriteOne("[MAFIA TEAM] " + msg + "\n");
+                                    }
+                                    // 스파이가 접선했다면 스파이에게도 전송
+                                    if (user.role.equals("SPY") && spyContactedMafia) {
+                                        user.WriteOne("[MAFIA TEAM] " + msg + "\n");
+                                    }
+                                }
+                                AppendText("[MAFIA TEAM] " + msg);
+                            } else if (role.equals("SPY")) {
+                                // 스파이는 접선 후에만 채팅 가능
+                                if (spyContactedMafia) {
+                                    for (UserService user : UserVec) {
+                                        if (user.role.equals("MAFIA")) {
+                                            user.WriteOne("[MAFIA TEAM] " + msg + "\n");
+                                        }
+                                        if (user.role.equals("SPY")) {
+                                            user.WriteOne("[MAFIA TEAM] " + msg + "\n");
+                                        }
+                                    }
+                                    AppendText("[MAFIA TEAM] " + msg);
+                                } else {
+                                    WriteOne("SYSTEM: 마피아와 접선하기 전에는 채팅할 수 없습니다.\n");
+                                }
+                            } else {
+                                WriteOne("SYSTEM: 밤에는 채팅할 수 없습니다.\n");
+                            }
+                        } else {
+                            // 낮이나 투표 시간
+                            // 살아있는 플레이어와 죽은 플레이어의 채팅 분리
+                            if (aliveStatus.get(UserName) != null && !aliveStatus.get(UserName)) {
+                                // 죽은 플레이어의 채팅 (성불당하지 않은 경우에만)
+                                if (blessedStatus.get(UserName) != null && blessedStatus.get(UserName)) {
+                                    WriteOne("SYSTEM: 성불당해서 채팅할 수 없습니다.\n");
+                                } else {
+                                    // 죽은 플레이어끼리 채팅 + 영매도 볼 수 있음
+                                    for (UserService user : UserVec) {
+                                        // 죽은 플레이어들에게 전송
+                                        if (aliveStatus.get(user.UserName) != null && !aliveStatus.get(user.UserName)) {
+                                            user.WriteOne("[DEAD CHAT] " + msg + "\n");
+                                        }
+                                        // 영매에게도 전송 (살아있는 영매만)
+                                        if (user.role.equals("SHAMAN") && (aliveStatus.get(user.UserName) == null || aliveStatus.get(user.UserName))) {
+                                            user.WriteOne("[DEAD CHAT] " + msg + "\n");
+                                        }
+                                    }
+                                    AppendText("[DEAD CHAT] " + msg);
+                                }
+                            } else {
+                                // 살아있는 플레이어의 채팅은 모두에게 전송
+                                WriteAll(msg + "\n");
+                            }
+                        }
                     }
 
                 } catch (IOException e) {
