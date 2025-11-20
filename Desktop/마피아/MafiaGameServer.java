@@ -55,6 +55,8 @@ public class MafiaGameServer extends JFrame {
     private String reporterTargetRole = ""; // 기자 타겟의 직업
     private int nightCount = 0; // 밤 카운트 (기자 능력 사용 제한용)
     private boolean reporterUsed = false; // 기자가 능력을 사용했는지 여부
+    private String ghoulName = ""; // 도굴꾼 이름
+    private boolean ghoulTransformed = false; // 도굴꾼이 변신했는지 여부
 
     public static void main(String[] args) {
         EventQueue.invokeLater(new Runnable() {
@@ -175,12 +177,20 @@ public class MafiaGameServer extends JFrame {
         List<String> roles = new ArrayList<>();
         int playerCount = UserVec.size();
 
-        // 역할 구성 (4명: 마피아1, 의사1, 경찰1, 시민1)
+        // 역할 구성 (최대 8명)
+        // 4명: 마피아1, 의사1, 경찰1, 시민1
         // 5명: 마피아2, 의사1, 경찰1, 정치인 또는 군인 1 (랜덤)
         // 6명: 마피아1, 스파이1, 의사1, 경찰1, 정치인1, 군인1
         // 7명: 마피아1, 스파이1, 의사1, 경찰1, 정치인1, 군인1, 영매1
-        // 8명: 마피아1, 스파이1, 의사1, 경찰1, 정치인1, 군인1, 영매1, 기자1
-        // 9명 이상: 마피아1, 스파이1, 의사1, 경찰1, 정치인1, 군인1, 영매1, 기자1, 시민 나머지
+        // 8명: 마피아2, 스파이1, 의사1, 경찰1, 특직 3명 (정치인, 기자, 군인, 영매, 도굴꾼 중 랜덤)
+
+        if (playerCount > 8) {
+            AppendText("최대 8명까지만 게임 가능합니다!");
+            WriteAll("SYSTEM: 최대 8명까지만 게임 가능합니다.\n");
+            gameStarted = false;
+            btnGameStart.setEnabled(true);
+            return;
+        }
 
         if (playerCount == 4) {
             roles.add("MAFIA");
@@ -214,25 +224,25 @@ public class MafiaGameServer extends JFrame {
             roles.add("SOLDIER");
             roles.add("SHAMAN");
         } else if (playerCount == 8) {
+            // 8명: 마피아2, 스파이1, 의사1, 경찰1, 특직 3명
+            roles.add("MAFIA");
             roles.add("MAFIA");
             roles.add("SPY");
             roles.add("DOCTOR");
             roles.add("POLICE");
-            roles.add("POLITICIAN");
-            roles.add("SOLDIER");
-            roles.add("SHAMAN");
-            roles.add("REPORTER");
-        } else {
-            roles.add("MAFIA");
-            roles.add("SPY");
-            roles.add("DOCTOR");
-            roles.add("POLICE");
-            roles.add("POLITICIAN");
-            roles.add("SOLDIER");
-            roles.add("SHAMAN");
-            roles.add("REPORTER");
-            for (int i = 0; i < playerCount - 8; i++) {
-                roles.add("CITIZEN");
+
+            // 특수 직업 5개 중 3개 랜덤 선택
+            List<String> specialRoles = new ArrayList<>();
+            specialRoles.add("POLITICIAN");
+            specialRoles.add("REPORTER");
+            specialRoles.add("SOLDIER");
+            specialRoles.add("SHAMAN");
+            specialRoles.add("GHOUL");
+            Collections.shuffle(specialRoles);
+
+            // 앞의 3개만 추가
+            for (int i = 0; i < 3; i++) {
+                roles.add(specialRoles.get(i));
             }
         }
         
@@ -250,13 +260,15 @@ public class MafiaGameServer extends JFrame {
                 soldierShield.put(user.UserName, true);
             }
 
-            // 마피아, 스파이, 영매 이름 저장
+            // 마피아, 스파이, 영매, 도굴꾼 이름 저장
             if (role.equals("MAFIA")) {
                 mafiaName = user.UserName;
             } else if (role.equals("SPY")) {
                 spyName = user.UserName;
             } else if (role.equals("SHAMAN")) {
                 shamanName = user.UserName;
+            } else if (role.equals("GHOUL")) {
+                ghoulName = user.UserName;
             }
 
             String roleMsg = getRoleDescription(role);
@@ -284,6 +296,8 @@ public class MafiaGameServer extends JFrame {
                 return "당신은 [영매]입니다. 죽은 자들의 대화를 보고 밤에 한 명을 성불시켜 직업을 알아낼 수 있습니다!";
             case "REPORTER":
                 return "당신은 [기자]입니다. 2일차 밤부터 8일차 밤까지 한 명을 선택하여 다음 날 아침에 직업을 공개할 수 있습니다!";
+            case "GHOUL":
+                return "당신은 [도굴꾼]입니다. 첫날 밤 마피아에게 살해당한 사람의 직업을 얻습니다. 사망자가 없으면 시민이 됩니다!";
             case "CITIZEN":
                 return "당신은 [시민]입니다. 낮 투표로 마피아를 찾아내세요!";
             default:
@@ -359,11 +373,46 @@ public class MafiaGameServer extends JFrame {
                 for (UserService user : UserVec) {
                     if (user.UserName.equals(mafiaTarget)) {
                         user.WriteOne("DEAD:true\n");
+
+                        // 도굴꾼 능력: 첫날 밤 사망자의 직업 획득
+                        // 단, 군인은 첫날 밤에 죽지 않으므로 도굴꾼이 얻을 수 없음
+                        if (dayCount == 1 && !ghoulTransformed && !ghoulName.isEmpty()) {
+                            String victimRole = user.role;
+                            // 도굴꾼 찾기
+                            for (UserService ghoulUser : UserVec) {
+                                if (ghoulUser.UserName.equals(ghoulName)) {
+                                    ghoulUser.setRole(victimRole);
+                                    // 클라이언트에 역할 변경 알림
+                                    ghoulUser.WriteOne("ROLE:" + victimRole + "\n");
+                                    ghoulUser.WriteOne("SYSTEM: 첫날 밤 사망자 [" + mafiaTarget + "]의 직업 [" + victimRole + "]을 얻었습니다!\n");
+                                    ghoulUser.WriteOne("SYSTEM: " + getRoleDescription(victimRole) + "\n");
+                                    AppendText("도굴꾼 " + ghoulName + "이 " + victimRole + "로 변신");
+                                    ghoulTransformed = true;
+                                    break;
+                                }
+                            }
+                        }
                     }
                 }
             }
         }
-        
+
+        // 도굴꾼 능력: 첫날 밤 사망자가 없으면 시민이 됨
+        if (dayCount == 1 && !ghoulTransformed && !ghoulName.isEmpty()) {
+            for (UserService user : UserVec) {
+                if (user.UserName.equals(ghoulName)) {
+                    user.setRole("CITIZEN");
+                    // 클라이언트에 역할 변경 알림
+                    user.WriteOne("ROLE:CITIZEN\n");
+                    user.WriteOne("SYSTEM: 첫날 밤 사망자가 없어 [시민]이 되었습니다.\n");
+                    user.WriteOne("SYSTEM: " + getRoleDescription("CITIZEN") + "\n");
+                    AppendText("도굴꾼 " + ghoulName + "이 시민으로 변신");
+                    ghoulTransformed = true;
+                    break;
+                }
+            }
+        }
+
         // 경찰과 스파이 조사 결과는 즉시 전송되므로 여기서는 처리하지 않음
     }
 
@@ -692,8 +741,18 @@ public class MafiaGameServer extends JFrame {
                             nightActions.put(actionRole, target);
                             AppendText(UserName + "(" + role + ") -> " + target);
 
+                            // 마피아가 타겟을 선택하면 모든 마피아에게 동기화
+                            if (actionRole.equals("MAFIA")) {
+                                // 모든 마피아에게 선택 결과 알림
+                                for (UserService mafiaUser : UserVec) {
+                                    if (mafiaUser.role.equals("MAFIA")) {
+                                        mafiaUser.WriteOne("SYSTEM: 마피아 팀이 [" + target + "]님을 타겟으로 선택했습니다.\n");
+                                    }
+                                }
+                                WriteOne("SYSTEM: [" + target + "]님을 타겟으로 선택했습니다.\n");
+                            }
                             // 경찰과 스파이는 즉시 조사 결과 전송
-                            if (actionRole.equals("POLICE")) {
+                            else if (actionRole.equals("POLICE")) {
                                 for (UserService targetUser : UserVec) {
                                     if (targetUser.UserName.equals(target)) {
                                         String result = targetUser.role.equals("MAFIA") || targetUser.role.equals("SPY") ? "마피아입니다!" : "마피아가 아닙니다.";
