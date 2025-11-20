@@ -57,6 +57,7 @@ public class MafiaGameServer extends JFrame {
     private boolean reporterUsed = false; // 기자가 능력을 사용했는지 여부
     private String ghoulName = ""; // 도굴꾼 이름
     private boolean ghoulTransformed = false; // 도굴꾼이 변신했는지 여부
+    private Map<String, Boolean> voteBanned = new HashMap<>(); // 건달에 의해 투표 금지된 플레이어 (true = 투표 불가)
 
     public static void main(String[] args) {
         EventQueue.invokeLater(new Runnable() {
@@ -231,13 +232,14 @@ public class MafiaGameServer extends JFrame {
             roles.add("DOCTOR");
             roles.add("POLICE");
 
-            // 특수 직업 5개 중 3개 랜덤 선택
+            // 특수 직업 6개 중 3개 랜덤 선택
             List<String> specialRoles = new ArrayList<>();
             specialRoles.add("POLITICIAN");
             specialRoles.add("REPORTER");
             specialRoles.add("SOLDIER");
             specialRoles.add("SHAMAN");
             specialRoles.add("GHOUL");
+            specialRoles.add("GANGSTER");
             Collections.shuffle(specialRoles);
 
             // 앞의 3개만 추가
@@ -298,6 +300,8 @@ public class MafiaGameServer extends JFrame {
                 return "당신은 [기자]입니다. 2일차 밤부터 8일차 밤까지 한 명을 선택하여 다음 날 아침에 직업을 공개할 수 있습니다!";
             case "GHOUL":
                 return "당신은 [도굴꾼]입니다. 첫날 밤 마피아에게 살해당한 사람의 직업을 얻습니다. 사망자가 없으면 시민이 됩니다!";
+            case "GANGSTER":
+                return "당신은 [건달]입니다. 밤마다 한 명을 선택하여 다음 날 투표를 못하게 만들 수 있습니다!";
             case "CITIZEN":
                 return "당신은 [시민]입니다. 낮 투표로 마피아를 찾아내세요!";
             default:
@@ -311,6 +315,7 @@ public class MafiaGameServer extends JFrame {
         nightCount++;
         gamePhase = "NIGHT";
         nightActions.clear();
+        voteBanned.clear(); // 건달 투표 금지 초기화
         reporterTarget = ""; // 기자 타겟 초기화
         reporterTargetRole = ""; // 기자 타겟 역할 초기화
 
@@ -340,12 +345,20 @@ public class MafiaGameServer extends JFrame {
         String doctorTarget = nightActions.get("DOCTOR");
         String policeTarget = nightActions.get("POLICE");
         String spyTarget = nightActions.get("SPY");
+        String gangsterTarget = nightActions.get("GANGSTER");
 
         AppendText("=== 밤 행동 결과 ===");
         AppendText("마피아 타겟: " + (mafiaTarget != null ? mafiaTarget : "없음"));
         AppendText("의사 보호: " + (doctorTarget != null ? doctorTarget : "없음"));
         AppendText("경찰 조사: " + (policeTarget != null ? policeTarget : "없음"));
         AppendText("스파이 조사: " + (spyTarget != null ? spyTarget : "없음"));
+        AppendText("건달 타겟: " + (gangsterTarget != null ? gangsterTarget : "없음"));
+
+        // 건달의 투표 금지 처리
+        if (gangsterTarget != null) {
+            voteBanned.put(gangsterTarget, true);
+            AppendText(gangsterTarget + " 다음 투표 금지됨");
+        }
 
         // 마피아의 공격 처리
         if (mafiaTarget != null) {
@@ -824,6 +837,18 @@ public class MafiaGameServer extends JFrame {
                                         }
                                     }
                                 }
+                            } else if (actionRole.equals("GANGSTER")) {
+                                // 건달의 투표 금지 능력
+                                WriteOne("SYSTEM: [" + target + "]님을 선택했습니다. 다음 투표에서 투표하지 못합니다!\n");
+                                AppendText("건달 " + UserName + "이 " + target + " 선택 -> 다음 투표 금지");
+                                
+                                // 타겟에게 협박 메시지 전송
+                                for (UserService targetUser : UserVec) {
+                                    if (targetUser.UserName.equals(target)) {
+                                        targetUser.WriteOne("SYSTEM: 협박을 받았습니다! 다음 투표에 참여할 수 없습니다.\n");
+                                        break;
+                                    }
+                                }
                             } else {
                                 WriteOne("SYSTEM: 선택이 완료되었습니다.\n");
                             }
@@ -834,8 +859,12 @@ public class MafiaGameServer extends JFrame {
                         if (parts.length == 2) {
                             String target = parts[1];
 
+                            // 건달에 의해 투표가 금지된 경우
+                            if (voteBanned.get(UserName) != null && voteBanned.get(UserName)) {
+                                WriteOne("SYSTEM: 건달에 의해 투표가 금지되었습니다!\n");
+                            }
                             // 죽은 사람은 투표할 수 없음
-                            if (aliveStatus.get(UserName) != null && !aliveStatus.get(UserName)) {
+                            else if (aliveStatus.get(UserName) != null && !aliveStatus.get(UserName)) {
                                 WriteOne("SYSTEM: 죽은 사람은 투표할 수 없습니다!\n");
                             }
                             // 죽은 사람에게 투표할 수 없음

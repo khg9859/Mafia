@@ -285,12 +285,14 @@ public class MafiaGameClientView extends JFrame {
             } else if (myRole.equals("REPORTER")) {
                 SendMessage("NIGHT_ACTION:REPORTER:" + selectedPlayer);
                 AppendText("You selected [" + selectedPlayer + "] to investigate for scoop.\n");
+            } else if (myRole.equals("GANGSTER")) {
+                SendMessage("NIGHT_ACTION:GANGSTER:" + selectedPlayer);
+                AppendText("You selected [" + selectedPlayer + "] to ban from voting.\n");
             }
             btnAction.setEnabled(false);
         } else if (currentPhase.equals("VOTE")) {
-            // 투표
+            // 투표 (서버에서 결과 메시지를 받음)
             SendMessage("VOTE:" + selectedPlayer);
-            AppendText("You voted for [" + selectedPlayer + "].\n");
             btnAction.setEnabled(false);
         }
     }
@@ -320,6 +322,8 @@ public class MafiaGameClientView extends JFrame {
                     btnAction.setText("Bless Selected");
                 } else if (myRole.equals("REPORTER")) {
                     btnAction.setText("Investigate for Scoop");
+                } else if (myRole.equals("GANGSTER")) {
+                    btnAction.setText("Ban from Voting");
                 }
             }
         } else if (currentPhase.equals("VOTE")) {
@@ -360,6 +364,7 @@ public class MafiaGameClientView extends JFrame {
             case "SOLDIER": return "SOLDIER (군인)";
             case "SHAMAN": return "SHAMAN (영매)";
             case "REPORTER": return "REPORTER (기자)";
+            case "GANGSTER": return "GANGSTER (건달)";
             case "CITIZEN": return "CITIZEN (시민)";
             default: return role;
         }
@@ -376,6 +381,7 @@ public class MafiaGameClientView extends JFrame {
             case "SOLDIER": return new Color(139, 69, 19); // Saddle Brown
             case "SHAMAN": return new Color(148, 0, 211); // Dark Violet
             case "REPORTER": return new Color(255, 140, 0); // Dark Orange
+            case "GANGSTER": return new Color(105, 105, 105); // Dim Gray
             case "CITIZEN": return new Color(128, 128, 128); // Gray
             default: return Color.BLACK;
         }
