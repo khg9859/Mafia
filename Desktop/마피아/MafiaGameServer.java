@@ -57,7 +57,10 @@ public class MafiaGameServer extends JFrame {
     private boolean reporterUsed = false; // 기자가 능력을 사용했는지 여부
     private String ghoulName = ""; // 도굴꾼 이름
     private boolean ghoulTransformed = false; // 도굴꾼이 변신했는지 여부
+    private String ghoulVictim = ""; // 도굴꾼이 직업을 가져간 사람 (부활 시 시민이 됨)
     private Map<String, Boolean> voteBanned = new HashMap<>(); // 건달에 의해 투표 금지된 플레이어 (true = 투표 불가)
+    private boolean priestUsed = false; // 성직자가 소생 능력을 사용했는지 여부
+    private String priestTarget = ""; // 성직자가 선택한 부활 대상
 
     public static void main(String[] args) {
         EventQueue.invokeLater(new Runnable() {
@@ -232,7 +235,7 @@ public class MafiaGameServer extends JFrame {
             roles.add("DOCTOR");
             roles.add("POLICE");
 
-            // 특수 직업 6개 중 3개 랜덤 선택
+            // 특수 직업 7개 중 3개 랜덤 선택
             List<String> specialRoles = new ArrayList<>();
             specialRoles.add("POLITICIAN");
             specialRoles.add("REPORTER");
@@ -240,6 +243,7 @@ public class MafiaGameServer extends JFrame {
             specialRoles.add("SHAMAN");
             specialRoles.add("GHOUL");
             specialRoles.add("GANGSTER");
+            specialRoles.add("PRIEST");
             Collections.shuffle(specialRoles);
 
             // 앞의 3개만 추가
@@ -302,6 +306,8 @@ public class MafiaGameServer extends JFrame {
                 return "당신은 [도굴꾼]입니다. 첫날 밤 마피아에게 살해당한 사람의 직업을 얻습니다. 사망자가 없으면 시민이 됩니다!";
             case "GANGSTER":
                 return "당신은 [건달]입니다. 밤마다 한 명을 선택하여 다음 날 투표를 못하게 만들 수 있습니다!";
+            case "PRIEST":
+                return "당신은 [성직자]입니다. 게임 중 단 한 번, 죽은 플레이어 한 명을 부활시킬 수 있습니다! (성불된 사람은 부활 불가)";
             case "CITIZEN":
                 return "당신은 [시민]입니다. 낮 투표로 마피아를 찾아내세요!";
             default:
@@ -395,11 +401,12 @@ public class MafiaGameServer extends JFrame {
                             for (UserService ghoulUser : UserVec) {
                                 if (ghoulUser.UserName.equals(ghoulName)) {
                                     ghoulUser.setRole(victimRole);
+                                    ghoulVictim = mafiaTarget; // 도굴 희생자 기록
                                     // 클라이언트에 역할 변경 알림
                                     ghoulUser.WriteOne("ROLE:" + victimRole + "\n");
                                     ghoulUser.WriteOne("SYSTEM: 첫날 밤 사망자 [" + mafiaTarget + "]의 직업 [" + victimRole + "]을 얻었습니다!\n");
                                     ghoulUser.WriteOne("SYSTEM: " + getRoleDescription(victimRole) + "\n");
-                                    AppendText("도굴꾼 " + ghoulName + "이 " + victimRole + "로 변신");
+                                    AppendText("도굴꾼 " + ghoulName + "이 " + victimRole + "로 변신 (희생자: " + mafiaTarget + ")");
                                     ghoulTransformed = true;
                                     break;
                                 }
@@ -441,6 +448,34 @@ public class MafiaGameServer extends JFrame {
         AppendText("===== " + dayCount + "일차 낮 =====");
         WriteAll("PHASE:DAY\n");
         WriteAll("SYSTEM: ===== " + dayCount + "일차 낮이 되었습니다 =====\n");
+
+        // 성직자의 부활 처리
+        if (!priestTarget.isEmpty()) {
+            aliveStatus.put(priestTarget, true);
+            WriteAll("SYSTEM: 🌟 [" + priestTarget + "]님이 성직자에 의해 부활했습니다! 🌟\n");
+            AppendText("성직자가 " + priestTarget + " 부활 성공");
+            
+            // 부활한 플레이어에게 알림
+            for (UserService targetUser : UserVec) {
+                if (targetUser.UserName.equals(priestTarget)) {
+                    // 도굴꾼의 희생자인 경우 시민으로 변경
+                    if (priestTarget.equals(ghoulVictim)) {
+                        targetUser.setRole("CITIZEN");
+                        targetUser.WriteOne("ROLE:CITIZEN\n");
+                        targetUser.WriteOne("SYSTEM: 🌟 성직자에 의해 부활했습니다! 🌟\n");
+                        targetUser.WriteOne("SYSTEM: 당신의 직업은 도굴꾼에게 빼앗겨 [시민]이 되었습니다.\n");
+                        targetUser.WriteOne("SYSTEM: " + getRoleDescription("CITIZEN") + "\n");
+                        AppendText(priestTarget + " 부활 (도굴 희생자 -> 시민)");
+                    } else {
+                        targetUser.WriteOne("SYSTEM: 🌟 성직자에 의해 부활했습니다! 🌟\n");
+                    }
+                    targetUser.WriteOne("DEAD:false\n");
+                    break;
+                }
+            }
+            
+            priestTarget = ""; // 초기화
+        }
 
         // 기자의 특종 발표
         if (!reporterTarget.isEmpty() && !reporterTargetRole.isEmpty()) {
@@ -745,8 +780,8 @@ public class MafiaGameServer extends JFrame {
                             String actionRole = parts[1];
                             String target = parts[2];
 
-                            // 영매를 제외한 모든 직업은 죽은 사람에게 스킬을 쓸 수 없음
-                            if (!actionRole.equals("SHAMAN") && aliveStatus.get(target) != null && !aliveStatus.get(target)) {
+                            // 영매와 성직자를 제외한 모든 직업은 죽은 사람에게 스킬을 쓸 수 없음
+                            if (!actionRole.equals("SHAMAN") && !actionRole.equals("PRIEST") && aliveStatus.get(target) != null && !aliveStatus.get(target)) {
                                 WriteOne("SYSTEM: 죽은 사람에게는 능력을 사용할 수 없습니다!\n");
                                 return;
                             }
@@ -848,6 +883,23 @@ public class MafiaGameServer extends JFrame {
                                         targetUser.WriteOne("SYSTEM: 협박을 받았습니다! 다음 투표에 참여할 수 없습니다.\n");
                                         break;
                                     }
+                                }
+                            } else if (actionRole.equals("PRIEST")) {
+                                // 성직자의 소생 능력 (밤에 선택, 낮에 부활)
+                                if (priestUsed) {
+                                    WriteOne("SYSTEM: 이미 소생 능력을 사용했습니다!\n");
+                                } else if (aliveStatus.get(target) == null) {
+                                    WriteOne("SYSTEM: 해당 플레이어를 찾을 수 없습니다!\n");
+                                } else if (aliveStatus.get(target)) {
+                                    WriteOne("SYSTEM: [" + target + "]님은 살아있습니다! 죽은 사람만 부활시킬 수 있습니다.\n");
+                                } else if (blessedStatus.get(target) != null && blessedStatus.get(target)) {
+                                    WriteOne("SYSTEM: [" + target + "]님은 성불되어 부활할 수 없습니다!\n");
+                                } else {
+                                    // 부활 대상 저장 (낮에 실제 부활 처리)
+                                    priestTarget = target;
+                                    priestUsed = true;
+                                    WriteOne("SYSTEM: [" + target + "]님을 부활 대상으로 선택했습니다. 다음 낮에 부활합니다!\n");
+                                    AppendText("성직자 " + UserName + "이 " + target + " 부활 예약");
                                 }
                             } else {
                                 WriteOne("SYSTEM: 선택이 완료되었습니다.\n");

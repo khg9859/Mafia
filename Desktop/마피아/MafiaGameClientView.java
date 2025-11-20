@@ -203,11 +203,21 @@ public class MafiaGameClientView extends JFrame {
                         String players = msg.substring(8).trim();
                         updatePlayerList(players);
                     } else if (msg.startsWith("DEAD:")) {
-                        isDead = true;
-                        lblStatus.setText("Status: DEAD");
-                        lblStatus.setForeground(Color.RED);
-                        btnAction.setEnabled(false);
-                        AppendText("=== You are dead. You can chat with other dead players. SHAMAN can see your chat. ===\n");
+                        String status = msg.substring(5).trim();
+                        if (status.equals("true")) {
+                            isDead = true;
+                            lblStatus.setText("Status: DEAD");
+                            lblStatus.setForeground(Color.RED);
+                            btnAction.setEnabled(false);
+                            AppendText("=== You are dead. You can chat with other dead players. SHAMAN can see your chat. ===\n");
+                        } else if (status.equals("false")) {
+                            // 부활
+                            isDead = false;
+                            lblStatus.setText("Status: ALIVE");
+                            lblStatus.setForeground(Color.GREEN);
+                            updateActionButton();
+                            AppendText("=== You have been revived by the PRIEST! ===\n");
+                        }
                     } else {
                         AppendText(msg);
                     }
@@ -288,6 +298,9 @@ public class MafiaGameClientView extends JFrame {
             } else if (myRole.equals("GANGSTER")) {
                 SendMessage("NIGHT_ACTION:GANGSTER:" + selectedPlayer);
                 AppendText("You selected [" + selectedPlayer + "] to ban from voting.\n");
+            } else if (myRole.equals("PRIEST")) {
+                SendMessage("NIGHT_ACTION:PRIEST:" + selectedPlayer);
+                AppendText("You selected [" + selectedPlayer + "] to revive.\n");
             }
             btnAction.setEnabled(false);
         } else if (currentPhase.equals("VOTE")) {
@@ -324,6 +337,8 @@ public class MafiaGameClientView extends JFrame {
                     btnAction.setText("Investigate for Scoop");
                 } else if (myRole.equals("GANGSTER")) {
                     btnAction.setText("Ban from Voting");
+                } else if (myRole.equals("PRIEST")) {
+                    btnAction.setText("Revive Selected");
                 }
             }
         } else if (currentPhase.equals("VOTE")) {
@@ -365,6 +380,7 @@ public class MafiaGameClientView extends JFrame {
             case "SHAMAN": return "SHAMAN (영매)";
             case "REPORTER": return "REPORTER (기자)";
             case "GANGSTER": return "GANGSTER (건달)";
+            case "PRIEST": return "PRIEST (성직자)";
             case "CITIZEN": return "CITIZEN (시민)";
             default: return role;
         }
@@ -382,6 +398,7 @@ public class MafiaGameClientView extends JFrame {
             case "SHAMAN": return new Color(148, 0, 211); // Dark Violet
             case "REPORTER": return new Color(255, 140, 0); // Dark Orange
             case "GANGSTER": return new Color(105, 105, 105); // Dim Gray
+            case "PRIEST": return new Color(255, 255, 224); // Light Yellow
             case "CITIZEN": return new Color(128, 128, 128); // Gray
             default: return Color.BLACK;
         }
