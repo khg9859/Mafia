@@ -318,7 +318,7 @@ public class MafiaGameClientView extends JFrame {
         }
 
         if (currentPhase.equals("NIGHT")) {
-            if (myRole.equals("CITIZEN") || myRole.equals("POLITICIAN") || myRole.equals("SOLDIER")) {
+            if (myRole.equals("CITIZEN") || myRole.equals("POLITICIAN") || myRole.equals("SOLDIER") || myRole.equals("MADAME")) {
                 btnAction.setEnabled(false);
                 btnAction.setText("No Night Action");
             } else {
@@ -372,6 +372,7 @@ public class MafiaGameClientView extends JFrame {
     private String getRoleDisplayName(String role) {
         switch (role) {
             case "MAFIA": return "MAFIA (악당)";
+            case "MADAME": return "MADAME (마담)";
             case "SPY": return "SPY (스파이)";
             case "DOCTOR": return "DOCTOR (의사)";
             case "POLICE": return "POLICE (경찰)";
@@ -390,6 +391,7 @@ public class MafiaGameClientView extends JFrame {
     private Color getRoleColor(String role) {
         switch (role) {
             case "MAFIA": return new Color(220, 20, 60); // Crimson
+            case "MADAME": return new Color(255, 20, 147); // Deep Pink
             case "SPY": return new Color(138, 43, 226); // Blue Violet
             case "DOCTOR": return new Color(34, 139, 34); // Forest Green
             case "POLICE": return new Color(30, 144, 255); // Dodger Blue

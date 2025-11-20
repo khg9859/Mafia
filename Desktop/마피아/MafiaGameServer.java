@@ -61,6 +61,9 @@ public class MafiaGameServer extends JFrame {
     private Map<String, Boolean> voteBanned = new HashMap<>(); // 건달에 의해 투표 금지된 플레이어 (true = 투표 불가)
     private boolean priestUsed = false; // 성직자가 소생 능력을 사용했는지 여부
     private String priestTarget = ""; // 성직자가 선택한 부활 대상
+    private String madameName = ""; // 마담 이름
+    private Map<String, Boolean> seduced = new HashMap<>(); // 마담에게 유혹당한 플레이어 (true = 능력 사용 불가)
+    private boolean madameContactedMafia = false; // 마담이 마피아와 접선했는지 여부
 
     public static void main(String[] args) {
         EventQueue.invokeLater(new Runnable() {
@@ -213,25 +216,48 @@ public class MafiaGameServer extends JFrame {
                 roles.add("SOLDIER");
             }
         } else if (playerCount == 6) {
+            // 6명: 마피아1, 보조1(스파이 또는 마담), 의사1, 경찰1, 특직 2명
             roles.add("MAFIA");
-            roles.add("SPY");
+            
+            // 마피아 보조 직업 중 하나 랜덤 선택
+            if (Math.random() < 0.5) {
+                roles.add("SPY");
+            } else {
+                roles.add("MADAME");
+            }
+            
             roles.add("DOCTOR");
             roles.add("POLICE");
             roles.add("POLITICIAN");
             roles.add("SOLDIER");
         } else if (playerCount == 7) {
+            // 7명: 마피아1, 보조1(스파이 또는 마담), 의사1, 경찰1, 특직 3명
             roles.add("MAFIA");
-            roles.add("SPY");
+            
+            // 마피아 보조 직업 중 하나 랜덤 선택
+            if (Math.random() < 0.5) {
+                roles.add("SPY");
+            } else {
+                roles.add("MADAME");
+            }
+            
             roles.add("DOCTOR");
             roles.add("POLICE");
             roles.add("POLITICIAN");
             roles.add("SOLDIER");
             roles.add("SHAMAN");
         } else if (playerCount == 8) {
-            // 8명: 마피아2, 스파이1, 의사1, 경찰1, 특직 3명
+            // 8명: 마피아2, 보조1(스파이 또는 마담 중 랜덤), 의사1, 경찰1, 특직 3명
             roles.add("MAFIA");
             roles.add("MAFIA");
-            roles.add("SPY");
+            
+            // 마피아 보조 직업 중 하나 랜덤 선택 (50% 확률)
+            if (Math.random() < 0.5) {
+                roles.add("SPY");
+            } else {
+                roles.add("MADAME");
+            }
+            
             roles.add("DOCTOR");
             roles.add("POLICE");
 
@@ -269,6 +295,8 @@ public class MafiaGameServer extends JFrame {
             // 마피아, 스파이, 영매, 도굴꾼 이름 저장
             if (role.equals("MAFIA")) {
                 mafiaName = user.UserName;
+            } else if (role.equals("MADAME")) {
+                madameName = user.UserName;
             } else if (role.equals("SPY")) {
                 spyName = user.UserName;
             } else if (role.equals("SHAMAN")) {
@@ -288,6 +316,8 @@ public class MafiaGameServer extends JFrame {
         switch (role) {
             case "MAFIA":
                 return "당신은 [마피아]입니다. 밤에 시민을 제거하세요!";
+            case "MADAME":
+                return "당신은 [마담]입니다. 마피아 팀이며 낮 투표로 플레이어를 유혹하여 밤에 능력을 사용하지 못하게 만듭니다!";
             case "SPY":
                 return "당신은 [스파이]입니다. 마피아 팀이며 밤에 한 명의 직업을 알아낼 수 있습니다!";
             case "DOCTOR":
@@ -322,6 +352,7 @@ public class MafiaGameServer extends JFrame {
         gamePhase = "NIGHT";
         nightActions.clear();
         voteBanned.clear(); // 건달 투표 금지 초기화
+        // seduced는 초기화하지 않음 (낮에 유혹, 밤에 적용)
         reporterTarget = ""; // 기자 타겟 초기화
         reporterTargetRole = ""; // 기자 타겟 역할 초기화
 
@@ -371,10 +402,15 @@ public class MafiaGameServer extends JFrame {
             boolean savedByDoctor = mafiaTarget.equals(doctorTarget);
             boolean savedBySoldier = false;
 
-            // 군인의 방어막 체크
-            if (soldierShield.containsKey(mafiaTarget) && soldierShield.get(mafiaTarget)) {
+            // 군인의 방어막 체크 (유혹당하지 않은 경우에만)
+            boolean soldierSeduced = seduced.get(mafiaTarget) != null && seduced.get(mafiaTarget);
+            if (soldierShield.containsKey(mafiaTarget) && soldierShield.get(mafiaTarget) && !soldierSeduced) {
                 savedBySoldier = true;
                 soldierShield.put(mafiaTarget, false); // 방어막 사용됨
+            } else if (soldierShield.containsKey(mafiaTarget) && soldierShield.get(mafiaTarget) && soldierSeduced) {
+                // 군인이 유혹당한 경우 방어막 무효화
+                soldierShield.put(mafiaTarget, false);
+                AppendText(mafiaTarget + " 군인이지만 유혹당해 방어막 무효화");
             }
 
             if (savedByDoctor) {
@@ -448,6 +484,9 @@ public class MafiaGameServer extends JFrame {
         AppendText("===== " + dayCount + "일차 낮 =====");
         WriteAll("PHASE:DAY\n");
         WriteAll("SYSTEM: ===== " + dayCount + "일차 낮이 되었습니다 =====\n");
+        
+        // 유혹 초기화 (새로운 낮이 시작되면 이전 유혹 해제)
+        seduced.clear();
 
         // 성직자의 부활 처리
         if (!priestTarget.isEmpty()) {
@@ -566,10 +605,23 @@ public class MafiaGameServer extends JFrame {
                 }
             }
 
-            if (isPolitician) {
-                // 정치인은 투표로 죽지 않음
+            // 정치인이 유혹당했는지 확인
+            boolean politicianSeduced = seduced.get(maxVotedPlayer) != null && seduced.get(maxVotedPlayer);
+            
+            if (isPolitician && !politicianSeduced) {
+                // 정치인은 투표로 죽지 않음 (유혹당하지 않은 경우)
                 WriteAll("SYSTEM: [" + maxVotedPlayer + "]님은 정치인이므로 투표로 제거되지 않습니다!\n");
                 AppendText(maxVotedPlayer + " 투표 1위 (정치인 - 생존)");
+            } else if (isPolitician && politicianSeduced) {
+                // 정치인이 유혹당한 경우 능력 무효화
+                aliveStatus.put(maxVotedPlayer, false);
+                for (UserService user : UserVec) {
+                    if (user.UserName.equals(maxVotedPlayer)) {
+                        user.WriteOne("DEAD:true\n");
+                    }
+                }
+                WriteAll("SYSTEM: [" + maxVotedPlayer + "]님은 정치인이지만 마담에게 유혹당해 투표로 제거되었습니다!\n");
+                AppendText(maxVotedPlayer + " 제거됨 (정치인 - 유혹당함)");
             } else {
                 aliveStatus.put(maxVotedPlayer, false);
 
@@ -610,10 +662,11 @@ public class MafiaGameServer extends JFrame {
         for (UserService user : UserVec) {
             if (aliveStatus.get(user.UserName)) {
                 aliveCount++;
-                if (user.role.equals("MAFIA") || user.role.equals("SPY")) {
+                // 마피아 팀: 마피아, 스파이, 마담(접선 후)
+                if (user.role.equals("MAFIA") || user.role.equals("SPY") || (user.role.equals("MADAME") && madameContactedMafia)) {
                     mafiaCount++;
                 } else {
-                    // 정치인은 투표권이 2개이므로 2명으로 계산
+                    // 시민 팀 (정치인은 2명으로 계산)
                     if (user.role.equals("POLITICIAN")) {
                         citizenPower += 2;
                     } else {
@@ -785,6 +838,13 @@ public class MafiaGameServer extends JFrame {
                                 WriteOne("SYSTEM: 죽은 사람에게는 능력을 사용할 수 없습니다!\n");
                                 return;
                             }
+                            
+                            // 마담에게 유혹당한 경우 능력 사용 불가
+                            if (seduced.get(UserName) != null && seduced.get(UserName)) {
+                                WriteOne("SYSTEM: 마담에게 유혹당해 능력을 사용할 수 없습니다!\n");
+                                AppendText(UserName + " 유혹당해 능력 사용 불가");
+                                return;
+                            }
 
                             nightActions.put(actionRole, target);
                             AppendText(UserName + "(" + role + ") -> " + target);
@@ -929,6 +989,41 @@ public class MafiaGameServer extends JFrame {
                                 voteCount.put(target, voteCount.get(target) + votes);
                                 AppendText(UserName + "(" + role + ") -> " + target + " 투표 (" + votes + "표)");
                                 WriteOne("SYSTEM: [" + target + "]님에게 투표했습니다." + (votes == 2 ? " (2표)" : "") + "\n");
+                                
+                                // 마담의 유혹 능력
+                                if (role.equals("MADAME")) {
+                                    seduced.put(target, true);
+                                    AppendText("마담 " + UserName + "이 " + target + " 유혹 -> 밤 능력 사용 불가");
+                                    
+                                    // 유혹당한 사람에게 알림
+                                    for (UserService targetUser : UserVec) {
+                                        if (targetUser.UserName.equals(target)) {
+                                            // 마피아를 유혹한 경우 접선
+                                            if (targetUser.role.equals("MAFIA")) {
+                                                madameContactedMafia = true;
+                                                WriteOne("SYSTEM: [" + target + "]님은 마피아입니다! 접선했습니다. 이제 밤에 대화할 수 있습니다.\n");
+                                                targetUser.WriteOne("SYSTEM: [" + UserName + "]님이 마담으로 접선했습니다! 이제 동료입니다.\n");
+                                                AppendText("마담과 마피아 접선 완료");
+                                                
+                                                // 접선 후 즉시 게임 종료 조건 체크
+                                                new Thread(() -> {
+                                                    try {
+                                                        Thread.sleep(1000); // 1초 대기 후 체크
+                                                        if (checkGameEnd()) {
+                                                            AppendText("마담 접선 후 게임 종료 조건 충족");
+                                                        }
+                                                    } catch (InterruptedException e) {
+                                                        e.printStackTrace();
+                                                    }
+                                                }).start();
+                                            } else {
+                                                // 일반 플레이어 유혹
+                                                targetUser.WriteOne("SYSTEM: 💋 마담에게 유혹당했습니다! 밤에 능력을 사용할 수 없습니다.\n");
+                                            }
+                                            break;
+                                        }
+                                    }
+                                }
                             }
                         }
                     } else if (msg.contains("/exit")) {
@@ -966,8 +1061,30 @@ public class MafiaGameServer extends JFrame {
                                     if (user.role.equals("SPY") && spyContactedMafia) {
                                         user.WriteOne("[MAFIA TEAM] " + msg + "\n");
                                     }
+                                    // 마담이 접선했다면 마담에게도 전송
+                                    if (user.role.equals("MADAME") && madameContactedMafia) {
+                                        user.WriteOne("[MAFIA TEAM] " + msg + "\n");
+                                    }
                                 }
                                 AppendText("[MAFIA TEAM] " + msg);
+                            } else if (role.equals("MADAME")) {
+                                // 마담은 접선 후에만 채팅 가능
+                                if (madameContactedMafia) {
+                                    for (UserService user : UserVec) {
+                                        if (user.role.equals("MAFIA")) {
+                                            user.WriteOne("[MAFIA TEAM] " + msg + "\n");
+                                        }
+                                        if (user.role.equals("SPY") && spyContactedMafia) {
+                                            user.WriteOne("[MAFIA TEAM] " + msg + "\n");
+                                        }
+                                        if (user.role.equals("MADAME")) {
+                                            user.WriteOne("[MAFIA TEAM] " + msg + "\n");
+                                        }
+                                    }
+                                    AppendText("[MAFIA TEAM] " + msg);
+                                } else {
+                                    WriteOne("SYSTEM: 마피아와 접선하기 전에는 채팅할 수 없습니다.\n");
+                                }
                             } else if (role.equals("SPY")) {
                                 // 스파이는 접선 후에만 채팅 가능
                                 if (spyContactedMafia) {
@@ -976,6 +1093,9 @@ public class MafiaGameServer extends JFrame {
                                             user.WriteOne("[MAFIA TEAM] " + msg + "\n");
                                         }
                                         if (user.role.equals("SPY")) {
+                                            user.WriteOne("[MAFIA TEAM] " + msg + "\n");
+                                        }
+                                        if (user.role.equals("MADAME") && madameContactedMafia) {
                                             user.WriteOne("[MAFIA TEAM] " + msg + "\n");
                                         }
                                     }
@@ -988,8 +1108,12 @@ public class MafiaGameServer extends JFrame {
                             }
                         } else {
                             // 낮이나 투표 시간
+                            // 마담에게 유혹당한 경우 채팅 불가 (마피아 제외, 투표 시간에만)
+                            if (gamePhase.equals("VOTE") && seduced.get(UserName) != null && seduced.get(UserName) && !role.equals("MAFIA")) {
+                                WriteOne("SYSTEM: 마담에게 유혹당해 채팅할 수 없습니다!\n");
+                            }
                             // 살아있는 플레이어와 죽은 플레이어의 채팅 분리
-                            if (aliveStatus.get(UserName) != null && !aliveStatus.get(UserName)) {
+                            else if (aliveStatus.get(UserName) != null && !aliveStatus.get(UserName)) {
                                 // 죽은 플레이어의 채팅 (성불당하지 않은 경우에만)
                                 if (blessedStatus.get(UserName) != null && blessedStatus.get(UserName)) {
                                     WriteOne("SYSTEM: 성불당해서 채팅할 수 없습니다.\n");
