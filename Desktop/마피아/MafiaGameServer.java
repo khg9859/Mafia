@@ -45,6 +45,10 @@ public class MafiaGameServer extends JFrame {
     private Map<String, Boolean> aliveStatus = new HashMap<>();
     private Map<String, Integer> voteCount = new HashMap<>();
     private Map<String, String> nightActions = new HashMap<>(); // 밤 행동 저장
+    private Map<String, Boolean> soldierShield = new HashMap<>(); // 군인의 방어막 상태 (true = 방어막 있음)
+    private boolean spyContactedMafia = false; // 스파이가 마피아와 접선했는지 여부
+    private String mafiaName = ""; // 마피아 이름
+    private String spyName = ""; // 스파이 이름
 
     public static void main(String[] args) {
         EventQueue.invokeLater(new Runnable() {
@@ -164,30 +168,43 @@ public class MafiaGameServer extends JFrame {
     private void assignRoles() {
         List<String> roles = new ArrayList<>();
         int playerCount = UserVec.size();
-        
+
         // 역할 구성 (4명: 마피아1, 의사1, 경찰1, 시민1)
-        // 5-6명: 마피아2, 의사1, 경찰1, 시민 나머지
-        // 7명 이상: 마피아2, 의사1, 경찰1, 시민 나머지
-        
+        // 5명: 마피아2, 의사1, 경찰1, 정치인 또는 군인 1 (랜덤)
+        // 6명: 마피아1, 스파이1, 의사1, 경찰1, 정치인1, 군인1
+        // 7명 이상: 마피아1, 스파이1, 의사1, 경찰1, 정치인1, 군인1, 시민 나머지
+
         if (playerCount == 4) {
             roles.add("MAFIA");
             roles.add("DOCTOR");
             roles.add("POLICE");
             roles.add("CITIZEN");
-        } else if (playerCount <= 6) {
+        } else if (playerCount == 5) {
             roles.add("MAFIA");
             roles.add("MAFIA");
             roles.add("DOCTOR");
             roles.add("POLICE");
-            for (int i = 0; i < playerCount - 4; i++) {
-                roles.add("CITIZEN");
+            // 정치인 또는 군인 중 랜덤 선택
+            if (Math.random() < 0.5) {
+                roles.add("POLITICIAN");
+            } else {
+                roles.add("SOLDIER");
             }
+        } else if (playerCount == 6) {
+            roles.add("MAFIA");
+            roles.add("SPY");
+            roles.add("DOCTOR");
+            roles.add("POLICE");
+            roles.add("POLITICIAN");
+            roles.add("SOLDIER");
         } else {
             roles.add("MAFIA");
-            roles.add("MAFIA");
+            roles.add("SPY");
             roles.add("DOCTOR");
             roles.add("POLICE");
-            for (int i = 0; i < playerCount - 4; i++) {
+            roles.add("POLITICIAN");
+            roles.add("SOLDIER");
+            for (int i = 0; i < playerCount - 6; i++) {
                 roles.add("CITIZEN");
             }
         }
@@ -200,7 +217,19 @@ public class MafiaGameServer extends JFrame {
             UserService user = UserVec.get(i);
             String role = roles.get(i);
             user.setRole(role);
-            
+
+            // 군인이면 방어막 초기화
+            if (role.equals("SOLDIER")) {
+                soldierShield.put(user.UserName, true);
+            }
+
+            // 마피아와 스파이 이름 저장
+            if (role.equals("MAFIA")) {
+                mafiaName = user.UserName;
+            } else if (role.equals("SPY")) {
+                spyName = user.UserName;
+            }
+
             String roleMsg = getRoleDescription(role);
             user.WriteOne("ROLE:" + role + "\n");
             user.WriteOne("SYSTEM: " + roleMsg + "\n");
@@ -212,10 +241,16 @@ public class MafiaGameServer extends JFrame {
         switch (role) {
             case "MAFIA":
                 return "당신은 [마피아]입니다. 밤에 시민을 제거하세요!";
+            case "SPY":
+                return "당신은 [스파이]입니다. 마피아 팀이며 밤에 한 명의 직업을 알아낼 수 있습니다!";
             case "DOCTOR":
                 return "당신은 [의사]입니다. 밤에 한 명을 지정하여 보호하세요!";
             case "POLICE":
                 return "당신은 [경찰]입니다. 밤에 한 명을 조사하여 마피아인지 확인하세요!";
+            case "POLITICIAN":
+                return "당신은 [정치인]입니다. 투표로 죽지 않으며 2표를 행사합니다!";
+            case "SOLDIER":
+                return "당신은 [군인]입니다. 마피아의 공격을 한 차례 버틸 수 있습니다!";
             case "CITIZEN":
                 return "당신은 [시민]입니다. 낮 투표로 마피아를 찾아내세요!";
             default:
@@ -254,43 +289,46 @@ public class MafiaGameServer extends JFrame {
         String mafiaTarget = nightActions.get("MAFIA");
         String doctorTarget = nightActions.get("DOCTOR");
         String policeTarget = nightActions.get("POLICE");
-        
+        String spyTarget = nightActions.get("SPY");
+
         AppendText("=== 밤 행동 결과 ===");
         AppendText("마피아 타겟: " + (mafiaTarget != null ? mafiaTarget : "없음"));
         AppendText("의사 보호: " + (doctorTarget != null ? doctorTarget : "없음"));
         AppendText("경찰 조사: " + (policeTarget != null ? policeTarget : "없음"));
-        
+        AppendText("스파이 조사: " + (spyTarget != null ? spyTarget : "없음"));
+
         // 마피아의 공격 처리
-        if (mafiaTarget != null && !mafiaTarget.equals(doctorTarget)) {
-            aliveStatus.put(mafiaTarget, false);
-            WriteAll("SYSTEM: [" + mafiaTarget + "]님이 마피아에게 제거되었습니다.\n");
-            AppendText(mafiaTarget + " 사망");
-            
-            // 해당 플레이어에게 사망 알림
-            for (UserService user : UserVec) {
-                if (user.UserName.equals(mafiaTarget)) {
-                    user.WriteOne("DEAD:true\n");
-                }
+        if (mafiaTarget != null) {
+            boolean savedByDoctor = mafiaTarget.equals(doctorTarget);
+            boolean savedBySoldier = false;
+
+            // 군인의 방어막 체크
+            if (soldierShield.containsKey(mafiaTarget) && soldierShield.get(mafiaTarget)) {
+                savedBySoldier = true;
+                soldierShield.put(mafiaTarget, false); // 방어막 사용됨
             }
-        } else if (mafiaTarget != null && mafiaTarget.equals(doctorTarget)) {
-            WriteAll("SYSTEM: 의사가 누군가를 구했습니다!\n");
-            AppendText(mafiaTarget + " 의사가 구함");
-        }
-        
-        // 경찰 조사 결과
-        if (policeTarget != null) {
-            for (UserService user : UserVec) {
-                if (user.role.equals("POLICE")) {
-                    for (UserService target : UserVec) {
-                        if (target.UserName.equals(policeTarget)) {
-                            String result = target.role.equals("MAFIA") ? "마피아입니다!" : "마피아가 아닙니다.";
-                            user.WriteOne("SYSTEM: [" + policeTarget + "]님은 " + result + "\n");
-                            AppendText("경찰이 " + policeTarget + " 조사 -> " + result);
-                        }
+
+            if (savedByDoctor) {
+                WriteAll("SYSTEM: 의사가 누군가를 구했습니다!\n");
+                AppendText(mafiaTarget + " 의사가 구함");
+            } else if (savedBySoldier) {
+                WriteAll("SYSTEM: [" + mafiaTarget + "] 군인이 마피아의 공격을 막아냈습니다!\n");
+                AppendText(mafiaTarget + " 군인이 방어막으로 생존");
+            } else {
+                aliveStatus.put(mafiaTarget, false);
+                WriteAll("SYSTEM: [" + mafiaTarget + "]님이 마피아에게 제거되었습니다.\n");
+                AppendText(mafiaTarget + " 사망");
+
+                // 해당 플레이어에게 사망 알림
+                for (UserService user : UserVec) {
+                    if (user.UserName.equals(mafiaTarget)) {
+                        user.WriteOne("DEAD:true\n");
                     }
                 }
             }
         }
+        
+        // 경찰과 스파이 조사 결과는 즉시 전송되므로 여기서는 처리하지 않음
     }
 
     // 낮 페이즈
@@ -376,20 +414,36 @@ public class MafiaGameServer extends JFrame {
             WriteAll("SYSTEM: 동점 또는 투표 없음! 아무도 제거되지 않았습니다.\n");
             AppendText("투표 무효");
         } else {
-            aliveStatus.put(maxVotedPlayer, false);
-            
-            // 역할 공개
+            // 정치인인지 확인
             String eliminatedRole = "";
+            boolean isPolitician = false;
             for (UserService user : UserVec) {
                 if (user.UserName.equals(maxVotedPlayer)) {
                     eliminatedRole = user.role;
-                    user.WriteOne("DEAD:true\n");
+                    if (eliminatedRole.equals("POLITICIAN")) {
+                        isPolitician = true;
+                    }
                 }
             }
-            
-            WriteAll("SYSTEM: [" + maxVotedPlayer + "]님이 투표로 제거되었습니다.\n");
-            WriteAll("SYSTEM: [" + maxVotedPlayer + "]님의 역할은 [" + eliminatedRole + "]였습니다.\n");
-            AppendText(maxVotedPlayer + " 제거됨 (역할: " + eliminatedRole + ")");
+
+            if (isPolitician) {
+                // 정치인은 투표로 죽지 않음
+                WriteAll("SYSTEM: [" + maxVotedPlayer + "]님은 정치인이므로 투표로 제거되지 않습니다!\n");
+                AppendText(maxVotedPlayer + " 투표 1위 (정치인 - 생존)");
+            } else {
+                aliveStatus.put(maxVotedPlayer, false);
+
+                // 사망 알림
+                for (UserService user : UserVec) {
+                    if (user.UserName.equals(maxVotedPlayer)) {
+                        user.WriteOne("DEAD:true\n");
+                    }
+                }
+
+                WriteAll("SYSTEM: [" + maxVotedPlayer + "]님이 투표로 제거되었습니다.\n");
+                WriteAll("SYSTEM: [" + maxVotedPlayer + "]님의 역할은 [" + eliminatedRole + "]였습니다.\n");
+                AppendText(maxVotedPlayer + " 제거됨 (역할: " + eliminatedRole + ")");
+            }
         }
         
         // 게임 종료 체크
@@ -412,18 +466,26 @@ public class MafiaGameServer extends JFrame {
     private boolean checkGameEnd() {
         int aliveCount = 0;
         int mafiaCount = 0;
-        
+        int citizenPower = 0; // 시민 팀의 실질적인 힘 (정치인은 2로 계산)
+
         for (UserService user : UserVec) {
             if (aliveStatus.get(user.UserName)) {
                 aliveCount++;
-                if (user.role.equals("MAFIA")) {
+                if (user.role.equals("MAFIA") || user.role.equals("SPY")) {
                     mafiaCount++;
+                } else {
+                    // 정치인은 투표권이 2개이므로 2명으로 계산
+                    if (user.role.equals("POLITICIAN")) {
+                        citizenPower += 2;
+                    } else {
+                        citizenPower += 1;
+                    }
                 }
             }
         }
-        
-        AppendText("생존자: " + aliveCount + "명, 마피아: " + mafiaCount + "명");
-        
+
+        AppendText("생존자: " + aliveCount + "명, 마피아: " + mafiaCount + "명, 시민팀 파워: " + citizenPower);
+
         if (mafiaCount == 0) {
             // 시민 승리
             WriteAll("PHASE:END\n");
@@ -434,18 +496,18 @@ public class MafiaGameServer extends JFrame {
             gameStarted = false;
             btnGameStart.setEnabled(true);
             return true;
-        } else if (mafiaCount >= aliveCount - mafiaCount) {
-            // 마피아 승리
+        } else if (mafiaCount >= citizenPower) {
+            // 마피아 승리 - 마피아 수가 시민팀 파워와 같거나 많을 때
             WriteAll("PHASE:END\n");
             WriteAll("SYSTEM: ===== 게임 종료! 마피아 팀 승리! =====\n");
-            WriteAll("SYSTEM: 마피아가 시민 수와 같거나 많아졌습니다!\n");
+            WriteAll("SYSTEM: 마피아가 시민 팀과 같거나 많아졌습니다!\n");
             AppendText("===== 게임 종료: 마피아 승리 =====");
             revealAllRoles();
             gameStarted = false;
             btnGameStart.setEnabled(true);
             return true;
         }
-        
+
         return false;
     }
 
@@ -577,7 +639,48 @@ public class MafiaGameServer extends JFrame {
                             String target = parts[2];
                             nightActions.put(actionRole, target);
                             AppendText(UserName + "(" + role + ") -> " + target);
-                            WriteOne("SYSTEM: 선택이 완료되었습니다.\n");
+
+                            // 경찰과 스파이는 즉시 조사 결과 전송
+                            if (actionRole.equals("POLICE")) {
+                                for (UserService targetUser : UserVec) {
+                                    if (targetUser.UserName.equals(target)) {
+                                        String result = targetUser.role.equals("MAFIA") || targetUser.role.equals("SPY") ? "마피아입니다!" : "마피아가 아닙니다.";
+                                        WriteOne("SYSTEM: [" + target + "]님은 " + result + "\n");
+                                        AppendText("경찰 " + UserName + "이 " + target + " 조사 -> " + result);
+                                        break;
+                                    }
+                                }
+                            } else if (actionRole.equals("SPY")) {
+                                for (UserService targetUser : UserVec) {
+                                    if (targetUser.UserName.equals(target)) {
+                                        String targetRole = targetUser.role;
+                                        WriteOne("SYSTEM: [" + target + "]님의 직업은 [" + targetRole + "]입니다!\n");
+                                        AppendText("스파이 " + UserName + "이 " + target + " 조사 -> " + targetRole);
+
+                                        // 마피아를 조사했다면 접선
+                                        if (targetRole.equals("MAFIA") && !spyContactedMafia) {
+                                            spyContactedMafia = true;
+                                            // 마피아에게 스파이 정보 알림
+                                            for (UserService mafiaUser : UserVec) {
+                                                if (mafiaUser.role.equals("MAFIA")) {
+                                                    mafiaUser.WriteOne("SYSTEM: [" + spyName + "]님이 스파이로 접선했습니다! 이제 동료입니다.\n");
+                                                    AppendText("마피아와 스파이 접선 완료");
+                                                }
+                                            }
+                                            WriteOne("SYSTEM: 마피아 [" + mafiaName + "]님과 접선했습니다! 이제 서로를 알 수 있습니다.\n");
+                                        }
+
+                                        // 군인을 조사했다면 군인도 스파이를 알게 됨
+                                        if (targetRole.equals("SOLDIER")) {
+                                            targetUser.WriteOne("SYSTEM: 당신을 조사한 [" + UserName + "]님이 스파이임을 알아냈습니다!\n");
+                                            AppendText("군인 " + target + "이 스파이 " + UserName + " 정체 파악");
+                                        }
+                                        break;
+                                    }
+                                }
+                            } else {
+                                WriteOne("SYSTEM: 선택이 완료되었습니다.\n");
+                            }
                         }
                     } else if (msg.startsWith("VOTE:")) {
                         // VOTE:TARGET 형식
@@ -585,9 +688,11 @@ public class MafiaGameServer extends JFrame {
                         if (parts.length == 2) {
                             String target = parts[1];
                             if (voteCount.containsKey(target)) {
-                                voteCount.put(target, voteCount.get(target) + 1);
-                                AppendText(UserName + " -> " + target + " 투표");
-                                WriteOne("SYSTEM: [" + target + "]님에게 투표했습니다.\n");
+                                // 정치인이면 2표, 그 외는 1표
+                                int votes = role.equals("POLITICIAN") ? 2 : 1;
+                                voteCount.put(target, voteCount.get(target) + votes);
+                                AppendText(UserName + "(" + role + ") -> " + target + " 투표 (" + votes + "표)");
+                                WriteOne("SYSTEM: [" + target + "]님에게 투표했습니다." + (votes == 2 ? " (2표)" : "") + "\n");
                             }
                         }
                     } else if (msg.contains("/exit")) {

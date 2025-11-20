@@ -243,18 +243,21 @@ public class MafiaGameClientView extends JFrame {
             AppendText("You are dead and cannot perform actions.\n");
             return;
         }
-        
+
         String selectedPlayer = playerList.getSelectedValue();
         if (selectedPlayer == null) {
             AppendText("Please select a player first!\n");
             return;
         }
-        
+
         if (currentPhase.equals("NIGHT")) {
             // 밤 행동
             if (myRole.equals("MAFIA")) {
                 SendMessage("NIGHT_ACTION:MAFIA:" + selectedPlayer);
                 AppendText("You selected [" + selectedPlayer + "] to eliminate.\n");
+            } else if (myRole.equals("SPY")) {
+                SendMessage("NIGHT_ACTION:SPY:" + selectedPlayer);
+                AppendText("You selected [" + selectedPlayer + "] to investigate role.\n");
             } else if (myRole.equals("DOCTOR")) {
                 SendMessage("NIGHT_ACTION:DOCTOR:" + selectedPlayer);
                 AppendText("You selected [" + selectedPlayer + "] to protect.\n");
@@ -277,15 +280,17 @@ public class MafiaGameClientView extends JFrame {
             btnAction.setEnabled(false);
             return;
         }
-        
+
         if (currentPhase.equals("NIGHT")) {
-            if (myRole.equals("CITIZEN")) {
+            if (myRole.equals("CITIZEN") || myRole.equals("POLITICIAN") || myRole.equals("SOLDIER")) {
                 btnAction.setEnabled(false);
                 btnAction.setText("No Night Action");
             } else {
                 btnAction.setEnabled(true);
                 if (myRole.equals("MAFIA")) {
                     btnAction.setText("Kill Selected");
+                } else if (myRole.equals("SPY")) {
+                    btnAction.setText("Investigate Role");
                 } else if (myRole.equals("DOCTOR")) {
                     btnAction.setText("Protect Selected");
                 } else if (myRole.equals("POLICE")) {
@@ -294,7 +299,11 @@ public class MafiaGameClientView extends JFrame {
             }
         } else if (currentPhase.equals("VOTE")) {
             btnAction.setEnabled(true);
-            btnAction.setText("Vote Selected");
+            if (myRole.equals("POLITICIAN")) {
+                btnAction.setText("Vote Selected (2 votes)");
+            } else {
+                btnAction.setText("Vote Selected");
+            }
         } else {
             btnAction.setEnabled(false);
             btnAction.setText("No Action");
@@ -319,8 +328,11 @@ public class MafiaGameClientView extends JFrame {
     private String getRoleDisplayName(String role) {
         switch (role) {
             case "MAFIA": return "MAFIA (악당)";
+            case "SPY": return "SPY (스파이)";
             case "DOCTOR": return "DOCTOR (의사)";
             case "POLICE": return "POLICE (경찰)";
+            case "POLITICIAN": return "POLITICIAN (정치인)";
+            case "SOLDIER": return "SOLDIER (군인)";
             case "CITIZEN": return "CITIZEN (시민)";
             default: return role;
         }
@@ -330,8 +342,11 @@ public class MafiaGameClientView extends JFrame {
     private Color getRoleColor(String role) {
         switch (role) {
             case "MAFIA": return new Color(220, 20, 60); // Crimson
+            case "SPY": return new Color(138, 43, 226); // Blue Violet
             case "DOCTOR": return new Color(34, 139, 34); // Forest Green
             case "POLICE": return new Color(30, 144, 255); // Dodger Blue
+            case "POLITICIAN": return new Color(255, 215, 0); // Gold
+            case "SOLDIER": return new Color(139, 69, 19); // Saddle Brown
             case "CITIZEN": return new Color(128, 128, 128); // Gray
             default: return Color.BLACK;
         }
