@@ -289,9 +289,4 @@ java MafiaGameClientMain
 - **5-6명**: 표준 모드 (마피아2, 의사1, 경찰1, 시민 1-2)
 - **7명 이상**: 확장 모드 (마피아2, 의사1, 경찰1, 시민 다수)
 
-가장 재미있는 인원: **5-7명**
-
 ---
-
-즐거운 마피아 게임 되세요! 🎭
-](https://github.com/khg9859/Mafia/tree/Yong)](https://github.com/khg9859/Mafia/tree/Yong)
