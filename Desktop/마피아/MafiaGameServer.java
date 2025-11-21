@@ -1,3 +1,4 @@
+
 // MafiaGameServer.java
 import java.awt.EventQueue;
 import java.awt.event.ActionEvent;
@@ -37,7 +38,7 @@ public class MafiaGameServer extends JFrame {
     private ServerSocket socket;
     private Socket client_socket;
     private Vector<UserService> UserVec = new Vector<>();
-    
+
     // 게임 상태 변수
     private boolean gameStarted = false;
     private String gamePhase = "WAITING"; // WAITING, NIGHT, DAY, VOTE, RESULT
@@ -79,55 +80,151 @@ public class MafiaGameServer extends JFrame {
     }
 
     public MafiaGameServer() {
+        // 메인 프레임 설정
         setTitle("Mafia Game Server");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setBounds(100, 100, 450, 500);
-        contentPane = new JPanel();
-        contentPane.setBorder(new EmptyBorder(5, 5, 5, 5));
-        setContentPane(contentPane);
-        contentPane.setLayout(null);
+        setBounds(100, 100, 600, 500); // 크기 약간 키움
 
-        JScrollPane scrollPane = new JScrollPane();
-        scrollPane.setBounds(12, 10, 410, 340);
-        contentPane.add(scrollPane);
+        // 전체 테마 색상 정의
+        java.awt.Color backgroundColor = new java.awt.Color(18, 18, 18); // Very Dark Gray (Almost Black)
+        java.awt.Color panelColor = new java.awt.Color(30, 30, 30, 220); // Dark Gray with Transparency
+        java.awt.Color textColor = new java.awt.Color(240, 240, 240); // White
+        java.awt.Color accentColor = new java.awt.Color(192, 57, 43); // Deep Red (Mafia Red)
+        // java.awt.Color buttonColor = new java.awt.Color(41, 128, 185); // Darker Blue
+        // (Unused)
+
+        // Custom Background Panel
+        contentPane = new BackgroundPanel();
+        contentPane.setBorder(new EmptyBorder(0, 0, 0, 0));
+        contentPane.setLayout(new java.awt.BorderLayout());
+        setContentPane(contentPane);
+
+        // 1. 헤더 패널
+        JPanel headerPanel = new JPanel();
+        headerPanel.setBackground(new java.awt.Color(25, 25, 25, 220)); // Slightly lighter than background, transparent
+        headerPanel.setBorder(new EmptyBorder(15, 20, 15, 20));
+        headerPanel.setLayout(new java.awt.BorderLayout());
+
+        JLabel titleLabel = new JLabel("마피아 게임 서버");
+        titleLabel.setFont(new java.awt.Font("SansSerif", java.awt.Font.BOLD, 24));
+        titleLabel.setForeground(textColor);
+
+        // 아이콘 추가
+        try {
+            javax.swing.ImageIcon icon = new javax.swing.ImageIcon("info/ServerImg.png");
+            java.awt.Image img = icon.getImage();
+            java.awt.Image newImg = img.getScaledInstance(40, 40, java.awt.Image.SCALE_SMOOTH);
+            titleLabel.setIcon(new javax.swing.ImageIcon(newImg));
+            titleLabel.setIconTextGap(15); // 아이콘과 텍스트 사이 간격
+        } catch (Exception e) {
+            System.out.println("Icon load failed: " + e.getMessage());
+        }
+
+        headerPanel.add(titleLabel, java.awt.BorderLayout.WEST);
+
+        JLabel statusLabel = new JLabel("● Offline");
+        statusLabel.setFont(new java.awt.Font("SansSerif", java.awt.Font.PLAIN, 14));
+        statusLabel.setForeground(new java.awt.Color(255, 0, 0)); // Red
+        headerPanel.add(statusLabel, java.awt.BorderLayout.EAST);
+
+        contentPane.add(headerPanel, java.awt.BorderLayout.NORTH);
+
+        // 2. 로그 영역 (중앙)
+        JPanel centerPanel = new JPanel();
+        centerPanel.setLayout(new java.awt.BorderLayout());
+        centerPanel.setBorder(new EmptyBorder(20, 20, 10, 20));
+        centerPanel.setOpaque(false); // Make transparent to show background
 
         textArea = new JTextArea();
         textArea.setEditable(false);
-        scrollPane.setViewportView(textArea);
+        textArea.setFont(new java.awt.Font("Monospaced", java.awt.Font.PLAIN, 14));
+        textArea.setBackground(panelColor);
+        textArea.setForeground(textColor);
+        textArea.setBorder(new EmptyBorder(10, 10, 10, 10));
 
-        JLabel lblNewLabel = new JLabel("Port Number");
-        lblNewLabel.setBounds(12, 360, 100, 30);
-        contentPane.add(lblNewLabel);
+        JScrollPane scrollPane = new JScrollPane(textArea);
+        scrollPane.setBorder(javax.swing.BorderFactory.createLineBorder(panelColor));
+        scrollPane.getVerticalScrollBar().setUI(new javax.swing.plaf.basic.BasicScrollBarUI() {
+            @Override
+            protected void configureScrollBarColors() {
+                this.thumbColor = accentColor;
+                this.trackColor = panelColor;
+            }
+        });
+        scrollPane.setOpaque(false);
+        scrollPane.getViewport().setOpaque(false);
+
+        centerPanel.add(scrollPane, java.awt.BorderLayout.CENTER);
+
+        // 로그 영역 제목
+        JLabel logLabel = new JLabel("Server Logs");
+        logLabel.setFont(new java.awt.Font("SansSerif", java.awt.Font.BOLD, 14));
+        logLabel.setForeground(textColor);
+        logLabel.setBorder(new EmptyBorder(0, 0, 10, 0));
+        centerPanel.add(logLabel, java.awt.BorderLayout.NORTH);
+
+        contentPane.add(centerPanel, java.awt.BorderLayout.CENTER);
+
+        // 3. 컨트롤 패널 (하단)
+        JPanel controlPanel = new JPanel();
+        controlPanel.setLayout(new java.awt.GridLayout(2, 1, 10, 10));
+        controlPanel.setBorder(new EmptyBorder(10, 20, 20, 20));
+        controlPanel.setOpaque(false); // Transparent
+
+        // 포트 설정 패널
+        JPanel portPanel = new JPanel();
+        portPanel.setLayout(new java.awt.BorderLayout(10, 0));
+        portPanel.setOpaque(false);
+
+        JLabel lblPort = new JLabel("Port Number:");
+        lblPort.setFont(new java.awt.Font("SansSerif", java.awt.Font.BOLD, 14));
+        lblPort.setForeground(textColor);
+        portPanel.add(lblPort, java.awt.BorderLayout.WEST);
 
         txtPortNumber = new JTextField();
         txtPortNumber.setHorizontalAlignment(SwingConstants.CENTER);
         txtPortNumber.setText("30000");
-        txtPortNumber.setBounds(120, 360, 302, 30);
-        contentPane.add(txtPortNumber);
-        txtPortNumber.setColumns(10);
+        txtPortNumber.setFont(new java.awt.Font("Monospaced", java.awt.Font.BOLD, 14));
+        txtPortNumber.setBackground(panelColor);
+        txtPortNumber.setForeground(textColor);
+        txtPortNumber.setCaretColor(textColor);
+        txtPortNumber.setBorder(javax.swing.BorderFactory.createCompoundBorder(
+                javax.swing.BorderFactory.createLineBorder(accentColor),
+                javax.swing.BorderFactory.createEmptyBorder(5, 5, 5, 5)));
+        portPanel.add(txtPortNumber, java.awt.BorderLayout.CENTER);
 
-        JButton btnServerStart = new JButton("Server Start");
+        JButton btnServerStart = new JButton("Start Server");
+        styleButton(btnServerStart, accentColor, textColor);
         btnServerStart.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
                 try {
                     socket = new ServerSocket(Integer.parseInt(txtPortNumber.getText()));
                 } catch (NumberFormatException | IOException e1) {
                     e1.printStackTrace();
+                    AppendText("[Error] Port binding failed.");
+                    return;
                 }
                 AppendText("Mafia Game Server Running...");
                 btnServerStart.setText("Server Running");
                 btnServerStart.setEnabled(false);
+                btnServerStart.setBackground(new java.awt.Color(39, 174, 96)); // Green
                 txtPortNumber.setEnabled(false);
                 btnGameStart.setEnabled(true);
-                
+                statusLabel.setForeground(new java.awt.Color(39, 174, 96)); // Green
+                statusLabel.setText("● Running");
+
                 AcceptServer accept_server = new AcceptServer();
                 accept_server.start();
             }
         });
-        btnServerStart.setBounds(12, 400, 410, 40);
-        contentPane.add(btnServerStart);
+        portPanel.add(btnServerStart, java.awt.BorderLayout.EAST);
+        btnServerStart.setPreferredSize(new java.awt.Dimension(150, 40));
 
-        btnGameStart = new JButton("Game Start (Need 4+ players)");
+        controlPanel.add(portPanel);
+
+        // 게임 시작 버튼
+        btnGameStart = new JButton("Start Game (Need 4+ players)");
+        styleButton(btnGameStart, new java.awt.Color(149, 165, 166), textColor); // Disabled color initially
         btnGameStart.setEnabled(false);
         btnGameStart.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
@@ -139,8 +236,43 @@ public class MafiaGameServer extends JFrame {
                 startGame();
             }
         });
-        btnGameStart.setBounds(12, 445, 410, 40);
-        contentPane.add(btnGameStart);
+        controlPanel.add(btnGameStart);
+
+        contentPane.add(controlPanel, java.awt.BorderLayout.SOUTH);
+    }
+
+    // Custom Panel for Background Image
+    class BackgroundPanel extends JPanel {
+        private java.awt.Image backgroundImage;
+
+        public BackgroundPanel() {
+            try {
+                backgroundImage = new javax.swing.ImageIcon("info/server_background.jpg").getImage();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+
+        @Override
+        protected void paintComponent(java.awt.Graphics g) {
+            super.paintComponent(g);
+            if (backgroundImage != null) {
+                g.drawImage(backgroundImage, 0, 0, getWidth(), getHeight(), this);
+            } else {
+                g.setColor(new java.awt.Color(18, 18, 18));
+                g.fillRect(0, 0, getWidth(), getHeight());
+            }
+        }
+    }
+
+    private void styleButton(JButton button, java.awt.Color bg, java.awt.Color fg) {
+        button.setFont(new java.awt.Font("SansSerif", java.awt.Font.BOLD, 14));
+        button.setBackground(bg);
+        button.setForeground(fg);
+        button.setFocusPainted(false);
+        button.setBorderPainted(false);
+        button.setOpaque(true);
+        // Hover effect could be added here with MouseListener if needed
     }
 
     // 게임 시작
@@ -153,21 +285,21 @@ public class MafiaGameServer extends JFrame {
         gameStarted = true;
         dayCount = 0;
         btnGameStart.setEnabled(false);
-        
+
         AppendText("===== 게임 시작! =====");
         AppendText("참가자 수: " + UserVec.size());
-        
+
         // 역할 배정
         assignRoles();
-        
+
         // 모든 플레이어를 살아있는 상태로 초기화
         for (UserService user : UserVec) {
             aliveStatus.put(user.UserName, true);
         }
-        
+
         WriteAll("SYSTEM: ===== 마피아 게임이 시작되었습니다! =====\n");
         WriteAll("SYSTEM: 참가자 수: " + UserVec.size() + "명\n");
-        
+
         // 게임 시작 후 밤 페이즈로 전환
         new Thread(() -> {
             try {
@@ -218,14 +350,14 @@ public class MafiaGameServer extends JFrame {
         } else if (playerCount == 6) {
             // 6명: 마피아1, 보조1(스파이 또는 마담), 의사1, 경찰1, 특직 2명
             roles.add("MAFIA");
-            
+
             // 마피아 보조 직업 중 하나 랜덤 선택
             if (Math.random() < 0.5) {
                 roles.add("SPY");
             } else {
                 roles.add("MADAME");
             }
-            
+
             roles.add("DOCTOR");
             roles.add("POLICE");
             roles.add("POLITICIAN");
@@ -233,14 +365,14 @@ public class MafiaGameServer extends JFrame {
         } else if (playerCount == 7) {
             // 7명: 마피아1, 보조1(스파이 또는 마담), 의사1, 경찰1, 특직 3명
             roles.add("MAFIA");
-            
+
             // 마피아 보조 직업 중 하나 랜덤 선택
             if (Math.random() < 0.5) {
                 roles.add("SPY");
             } else {
                 roles.add("MADAME");
             }
-            
+
             roles.add("DOCTOR");
             roles.add("POLICE");
             roles.add("POLITICIAN");
@@ -250,14 +382,14 @@ public class MafiaGameServer extends JFrame {
             // 8명: 마피아2, 보조1(스파이 또는 마담 중 랜덤), 의사1, 경찰1, 특직 3명
             roles.add("MAFIA");
             roles.add("MAFIA");
-            
+
             // 마피아 보조 직업 중 하나 랜덤 선택 (50% 확률)
             if (Math.random() < 0.5) {
                 roles.add("SPY");
             } else {
                 roles.add("MADAME");
             }
-            
+
             roles.add("DOCTOR");
             roles.add("POLICE");
 
@@ -277,10 +409,10 @@ public class MafiaGameServer extends JFrame {
                 roles.add(specialRoles.get(i));
             }
         }
-        
+
         // 역할 섞기
         Collections.shuffle(roles);
-        
+
         // 역할 배정 및 전송
         for (int i = 0; i < UserVec.size(); i++) {
             UserService user = UserVec.get(i);
@@ -360,10 +492,10 @@ public class MafiaGameServer extends JFrame {
         WriteAll("PHASE:NIGHT\n");
         WriteAll("SYSTEM: ===== " + dayCount + "일차 밤이 되었습니다 =====\n");
         WriteAll("SYSTEM: 마피아는 제거할 대상을, 의사는 보호할 대상을, 경찰은 조사할 대상을 선택하세요.\n");
-        
+
         // 살아있는 플레이어 목록 전송
         sendAlivePlayerList();
-        
+
         // 30초 대기 후 낮 페이즈로 전환
         new Thread(() -> {
             try {
@@ -440,9 +572,11 @@ public class MafiaGameServer extends JFrame {
                                     ghoulVictim = mafiaTarget; // 도굴 희생자 기록
                                     // 클라이언트에 역할 변경 알림
                                     ghoulUser.WriteOne("ROLE:" + victimRole + "\n");
-                                    ghoulUser.WriteOne("SYSTEM: 첫날 밤 사망자 [" + mafiaTarget + "]의 직업 [" + victimRole + "]을 얻었습니다!\n");
+                                    ghoulUser.WriteOne("SYSTEM: 첫날 밤 사망자 [" + mafiaTarget + "]의 직업 [" + victimRole
+                                            + "]을 얻었습니다!\n");
                                     ghoulUser.WriteOne("SYSTEM: " + getRoleDescription(victimRole) + "\n");
-                                    AppendText("도굴꾼 " + ghoulName + "이 " + victimRole + "로 변신 (희생자: " + mafiaTarget + ")");
+                                    AppendText(
+                                            "도굴꾼 " + ghoulName + "이 " + victimRole + "로 변신 (희생자: " + mafiaTarget + ")");
                                     ghoulTransformed = true;
                                     break;
                                 }
@@ -484,7 +618,7 @@ public class MafiaGameServer extends JFrame {
         AppendText("===== " + dayCount + "일차 낮 =====");
         WriteAll("PHASE:DAY\n");
         WriteAll("SYSTEM: ===== " + dayCount + "일차 낮이 되었습니다 =====\n");
-        
+
         // 유혹 초기화 (새로운 낮이 시작되면 이전 유혹 해제)
         seduced.clear();
 
@@ -493,7 +627,7 @@ public class MafiaGameServer extends JFrame {
             aliveStatus.put(priestTarget, true);
             WriteAll("SYSTEM: 🌟 [" + priestTarget + "]님이 성직자에 의해 부활했습니다! 🌟\n");
             AppendText("성직자가 " + priestTarget + " 부활 성공");
-            
+
             // 부활한 플레이어에게 알림
             for (UserService targetUser : UserVec) {
                 if (targetUser.UserName.equals(priestTarget)) {
@@ -512,7 +646,7 @@ public class MafiaGameServer extends JFrame {
                     break;
                 }
             }
-            
+
             priestTarget = ""; // 초기화
         }
 
@@ -526,7 +660,7 @@ public class MafiaGameServer extends JFrame {
         WriteAll("SYSTEM: 30초 후 투표가 시작됩니다.\n");
 
         sendAlivePlayerList();
-        
+
         // 30초 대기 후 투표 페이즈로 전환
         new Thread(() -> {
             try {
@@ -542,21 +676,21 @@ public class MafiaGameServer extends JFrame {
     private void startVotePhase() {
         gamePhase = "VOTE";
         voteCount.clear();
-        
+
         // 살아있는 모든 플레이어를 투표 대상으로 초기화
         for (String player : aliveStatus.keySet()) {
             if (aliveStatus.get(player)) {
                 voteCount.put(player, 0);
             }
         }
-        
+
         AppendText("===== 투표 시작 =====");
         WriteAll("PHASE:VOTE\n");
         WriteAll("SYSTEM: ===== 투표 시작 =====\n");
         WriteAll("SYSTEM: 제거할 플레이어를 투표하세요! (20초)\n");
-        
+
         sendAlivePlayerList();
-        
+
         // 20초 대기 후 투표 결과 처리
         new Thread(() -> {
             try {
@@ -571,15 +705,15 @@ public class MafiaGameServer extends JFrame {
     // 투표 결과 처리
     private void processVoteResult() {
         AppendText("=== 투표 결과 ===");
-        
+
         String maxVotedPlayer = null;
         int maxVotes = 0;
         boolean tie = false;
-        
+
         for (Map.Entry<String, Integer> entry : voteCount.entrySet()) {
             AppendText(entry.getKey() + ": " + entry.getValue() + "표");
             WriteAll("SYSTEM: [" + entry.getKey() + "] " + entry.getValue() + "표\n");
-            
+
             if (entry.getValue() > maxVotes) {
                 maxVotes = entry.getValue();
                 maxVotedPlayer = entry.getKey();
@@ -588,7 +722,7 @@ public class MafiaGameServer extends JFrame {
                 tie = true;
             }
         }
-        
+
         if (tie || maxVotes == 0) {
             WriteAll("SYSTEM: 동점 또는 투표 없음! 아무도 제거되지 않았습니다.\n");
             AppendText("투표 무효");
@@ -607,7 +741,7 @@ public class MafiaGameServer extends JFrame {
 
             // 정치인이 유혹당했는지 확인
             boolean politicianSeduced = seduced.get(maxVotedPlayer) != null && seduced.get(maxVotedPlayer);
-            
+
             if (isPolitician && !politicianSeduced) {
                 // 정치인은 투표로 죽지 않음 (유혹당하지 않은 경우)
                 WriteAll("SYSTEM: [" + maxVotedPlayer + "]님은 정치인이므로 투표로 제거되지 않습니다!\n");
@@ -636,12 +770,12 @@ public class MafiaGameServer extends JFrame {
                 AppendText(maxVotedPlayer + " 제거됨 (역할: " + eliminatedRole + ")");
             }
         }
-        
+
         // 게임 종료 체크
         if (checkGameEnd()) {
             return;
         }
-        
+
         // 다음 밤으로
         new Thread(() -> {
             try {
@@ -663,7 +797,8 @@ public class MafiaGameServer extends JFrame {
             if (aliveStatus.get(user.UserName)) {
                 aliveCount++;
                 // 마피아 팀: 마피아, 스파이, 마담(접선 후)
-                if (user.role.equals("MAFIA") || user.role.equals("SPY") || (user.role.equals("MADAME") && madameContactedMafia)) {
+                if (user.role.equals("MAFIA") || user.role.equals("SPY")
+                        || (user.role.equals("MADAME") && madameContactedMafia)) {
                     mafiaCount++;
                 } else {
                     // 시민 팀 (정치인은 2명으로 계산)
@@ -732,7 +867,7 @@ public class MafiaGameServer extends JFrame {
                     AppendText("Waiting for players...");
                     client_socket = socket.accept();
                     AppendText("새로운 플레이어 from " + client_socket);
-                    
+
                     UserService new_user = new UserService(client_socket);
                     UserVec.add(new_user);
                     AppendText("플레이어 입장. 현재 플레이어 수: " + UserVec.size());
@@ -774,18 +909,18 @@ public class MafiaGameServer extends JFrame {
                 dis = new DataInputStream(is);
                 os = client_socket.getOutputStream();
                 dos = new DataOutputStream(os);
-                
+
                 String line1 = dis.readUTF();
                 String[] msg = line1.split(" ");
                 UserName = msg[1].trim();
-                
+
                 AppendText("새로운 플레이어: " + UserName);
                 WriteOne("SYSTEM: 마피아 게임 서버에 오신 것을 환영합니다!\n");
                 WriteOne("SYSTEM: [" + UserName + "]님 환영합니다.\n");
-                
+
                 String br_msg = "SYSTEM: [" + UserName + "]님이 입장하였습니다.\n";
                 WriteAll(br_msg);
-                
+
             } catch (Exception e) {
                 AppendText("UserService 생성 오류");
             }
@@ -834,11 +969,12 @@ public class MafiaGameServer extends JFrame {
                             String target = parts[2];
 
                             // 영매와 성직자를 제외한 모든 직업은 죽은 사람에게 스킬을 쓸 수 없음
-                            if (!actionRole.equals("SHAMAN") && !actionRole.equals("PRIEST") && aliveStatus.get(target) != null && !aliveStatus.get(target)) {
+                            if (!actionRole.equals("SHAMAN") && !actionRole.equals("PRIEST")
+                                    && aliveStatus.get(target) != null && !aliveStatus.get(target)) {
                                 WriteOne("SYSTEM: 죽은 사람에게는 능력을 사용할 수 없습니다!\n");
                                 return;
                             }
-                            
+
                             // 마담에게 유혹당한 경우 능력 사용 불가
                             if (seduced.get(UserName) != null && seduced.get(UserName)) {
                                 WriteOne("SYSTEM: 마담에게 유혹당해 능력을 사용할 수 없습니다!\n");
@@ -863,7 +999,9 @@ public class MafiaGameServer extends JFrame {
                             else if (actionRole.equals("POLICE")) {
                                 for (UserService targetUser : UserVec) {
                                     if (targetUser.UserName.equals(target)) {
-                                        String result = targetUser.role.equals("MAFIA") || targetUser.role.equals("SPY") ? "마피아입니다!" : "마피아가 아닙니다.";
+                                        String result = targetUser.role.equals("MAFIA") || targetUser.role.equals("SPY")
+                                                ? "마피아입니다!"
+                                                : "마피아가 아닙니다.";
                                         WriteOne("SYSTEM: [" + target + "]님은 " + result + "\n");
                                         AppendText("경찰 " + UserName + "이 " + target + " 조사 -> " + result);
                                         break;
@@ -882,7 +1020,8 @@ public class MafiaGameServer extends JFrame {
                                             // 마피아에게 스파이 정보 알림
                                             for (UserService mafiaUser : UserVec) {
                                                 if (mafiaUser.role.equals("MAFIA")) {
-                                                    mafiaUser.WriteOne("SYSTEM: [" + spyName + "]님이 스파이로 접선했습니다! 이제 동료입니다.\n");
+                                                    mafiaUser.WriteOne(
+                                                            "SYSTEM: [" + spyName + "]님이 스파이로 접선했습니다! 이제 동료입니다.\n");
                                                     AppendText("마피아와 스파이 접선 완료");
                                                 }
                                             }
@@ -904,7 +1043,8 @@ public class MafiaGameServer extends JFrame {
                                         // 죽은 사람만 성불 가능
                                         if (aliveStatus.get(target) != null && !aliveStatus.get(target)) {
                                             String targetRole = targetUser.role;
-                                            WriteOne("SYSTEM: [" + target + "]님을 성불시켰습니다. 직업은 [" + targetRole + "]였습니다!\n");
+                                            WriteOne("SYSTEM: [" + target + "]님을 성불시켰습니다. 직업은 [" + targetRole
+                                                    + "]였습니다!\n");
                                             AppendText("영매 " + UserName + "이 " + target + " 성불 -> " + targetRole);
                                             // 성불 상태 설정
                                             blessedStatus.put(target, true);
@@ -936,7 +1076,7 @@ public class MafiaGameServer extends JFrame {
                                 // 건달의 투표 금지 능력
                                 WriteOne("SYSTEM: [" + target + "]님을 선택했습니다. 다음 투표에서 투표하지 못합니다!\n");
                                 AppendText("건달 " + UserName + "이 " + target + " 선택 -> 다음 투표 금지");
-                                
+
                                 // 타겟에게 협박 메시지 전송
                                 for (UserService targetUser : UserVec) {
                                     if (targetUser.UserName.equals(target)) {
@@ -982,29 +1122,30 @@ public class MafiaGameServer extends JFrame {
                             // 죽은 사람에게 투표할 수 없음
                             else if (aliveStatus.get(target) != null && !aliveStatus.get(target)) {
                                 WriteOne("SYSTEM: 죽은 사람에게는 투표할 수 없습니다!\n");
-                            }
-                            else if (voteCount.containsKey(target)) {
+                            } else if (voteCount.containsKey(target)) {
                                 // 정치인이면 2표, 그 외는 1표
                                 int votes = role.equals("POLITICIAN") ? 2 : 1;
                                 voteCount.put(target, voteCount.get(target) + votes);
                                 AppendText(UserName + "(" + role + ") -> " + target + " 투표 (" + votes + "표)");
                                 WriteOne("SYSTEM: [" + target + "]님에게 투표했습니다." + (votes == 2 ? " (2표)" : "") + "\n");
-                                
+
                                 // 마담의 유혹 능력
                                 if (role.equals("MADAME")) {
                                     seduced.put(target, true);
                                     AppendText("마담 " + UserName + "이 " + target + " 유혹 -> 밤 능력 사용 불가");
-                                    
+
                                     // 유혹당한 사람에게 알림
                                     for (UserService targetUser : UserVec) {
                                         if (targetUser.UserName.equals(target)) {
                                             // 마피아를 유혹한 경우 접선
                                             if (targetUser.role.equals("MAFIA")) {
                                                 madameContactedMafia = true;
-                                                WriteOne("SYSTEM: [" + target + "]님은 마피아입니다! 접선했습니다. 이제 밤에 대화할 수 있습니다.\n");
-                                                targetUser.WriteOne("SYSTEM: [" + UserName + "]님이 마담으로 접선했습니다! 이제 동료입니다.\n");
+                                                WriteOne("SYSTEM: [" + target
+                                                        + "]님은 마피아입니다! 접선했습니다. 이제 밤에 대화할 수 있습니다.\n");
+                                                targetUser.WriteOne(
+                                                        "SYSTEM: [" + UserName + "]님이 마담으로 접선했습니다! 이제 동료입니다.\n");
                                                 AppendText("마담과 마피아 접선 완료");
-                                                
+
                                                 // 접선 후 즉시 게임 종료 조건 체크
                                                 new Thread(() -> {
                                                     try {
@@ -1045,7 +1186,8 @@ public class MafiaGameServer extends JFrame {
                                             user.WriteOne("[DEAD CHAT] " + msg + "\n");
                                         }
                                         // 영매에게도 전송 (살아있는 영매만)
-                                        if (user.role.equals("SHAMAN") && (aliveStatus.get(user.UserName) == null || aliveStatus.get(user.UserName))) {
+                                        if (user.role.equals("SHAMAN") && (aliveStatus.get(user.UserName) == null
+                                                || aliveStatus.get(user.UserName))) {
                                             user.WriteOne("[DEAD CHAT] " + msg + "\n");
                                         }
                                     }
@@ -1109,7 +1251,8 @@ public class MafiaGameServer extends JFrame {
                         } else {
                             // 낮이나 투표 시간
                             // 마담에게 유혹당한 경우 채팅 불가 (마피아 제외, 투표 시간에만)
-                            if (gamePhase.equals("VOTE") && seduced.get(UserName) != null && seduced.get(UserName) && !role.equals("MAFIA")) {
+                            if (gamePhase.equals("VOTE") && seduced.get(UserName) != null && seduced.get(UserName)
+                                    && !role.equals("MAFIA")) {
                                 WriteOne("SYSTEM: 마담에게 유혹당해 채팅할 수 없습니다!\n");
                             }
                             // 살아있는 플레이어와 죽은 플레이어의 채팅 분리
@@ -1125,7 +1268,8 @@ public class MafiaGameServer extends JFrame {
                                             user.WriteOne("[DEAD CHAT] " + msg + "\n");
                                         }
                                         // 영매에게도 전송 (살아있는 영매만)
-                                        if (user.role.equals("SHAMAN") && (aliveStatus.get(user.UserName) == null || aliveStatus.get(user.UserName))) {
+                                        if (user.role.equals("SHAMAN") && (aliveStatus.get(user.UserName) == null
+                                                || aliveStatus.get(user.UserName))) {
                                             user.WriteOne("[DEAD CHAT] " + msg + "\n");
                                         }
                                     }
