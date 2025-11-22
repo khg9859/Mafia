@@ -109,8 +109,9 @@ public class MafiaGameClientView extends JFrame {
         roleImageMap.put("REPORTER", "gija.png");
         roleImageMap.put("SHAMAN", "yeongmae.png");
         roleImageMap.put("PRIEST", "seongzik.png");
-        roleImageMap.put("MADAME", "dogul.png");
-        roleImageMap.put("SPY", "tamjung.png");
+        roleImageMap.put("MADAME", "Madam.png");
+        roleImageMap.put("GHOUL", "ghoul.png");
+        roleImageMap.put("SPY", "spy.png");
         roleImageMap.put("DEFAULT", "default.png");
     }
 
@@ -600,6 +601,8 @@ public class MafiaGameClientView extends JFrame {
                 return "성직자";
             case "CITIZEN":
                 return "시민";
+            case "GHOUL":
+                return "도굴꾼";
             default:
                 return role;
         }
