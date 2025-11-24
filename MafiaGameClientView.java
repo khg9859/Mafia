@@ -266,7 +266,9 @@ public class MafiaGameClientView extends JFrame {
             addMouseListener(new MouseAdapter() {
                 @Override
                 public void mouseClicked(MouseEvent e) {
-                    if (!isEmpty && isAlive && !isDead) {
+                    // 성직자는 죽은 플레이어도 클릭 가능
+                    boolean canClick = !isEmpty && !isDead && (isAlive || myRole.equals("PRIEST"));
+                    if (canClick) {
                         handleCardClick();
                     }
                 }

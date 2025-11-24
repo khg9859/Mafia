@@ -67,6 +67,8 @@ public class MafiaGameServer extends JFrame {
     private String madameName = ""; // 마담 이름
     private Map<String, Boolean> seduced = new HashMap<>(); // 마담에게 유혹당한 플레이어 (true = 능력 사용 불가)
     private boolean madameContactedMafia = false; // 마담이 마피아와 접선했는지 여부
+    private Map<String, Boolean> hasActed = new HashMap<>(); // 밤에 행동했는지 여부 (중복 방지용)
+    private Map<String, Boolean> hasVoted = new HashMap<>(); // 투표했는지 여부 (중복 방지용)
 
     private Clip currentClip; // Server-side sound clip
 
@@ -527,7 +529,7 @@ public class MafiaGameServer extends JFrame {
                 return "당신은 [영매]입니다. 죽은 자들의 대화를 보고 밤에 한 명을 성불시켜 직업을 알아낼 수 있습니다!";
             case "REPORTER":
                 return "당신은 [기자]입니다. 2일차 밤부터 8일차 밤까지 한 명을 선택하여 다음 날 아침에 직업을 공개할 수 있습니다!";
-            case "GHOUL":
+            case "GHeOUL":
                 return "당신은 [도굴꾼]입니다. 첫날 밤 마피아에게 살해당한 사람의 직업을 얻습니다. 사망자가 없으면 시민이 됩니다!";
             case "GANGSTER":
                 return "당신은 [건달]입니다. 밤마다 한 명을 선택하여 다음 날 투표를 못하게 만들 수 있습니다!";
@@ -546,6 +548,7 @@ public class MafiaGameServer extends JFrame {
         nightCount++;
         gamePhase = "NIGHT";
         nightActions.clear();
+        hasActed.clear(); // 밤 행동 초기화 (중복 방지)
         voteBanned.clear(); // 건달 투표 금지 초기화
         // seduced는 초기화하지 않음 (낮에 유혹, 밤에 적용)
         reporterTarget = ""; // 기자 타겟 초기화
@@ -611,7 +614,7 @@ public class MafiaGameServer extends JFrame {
             }
 
             if (savedByDoctor) {
-                WriteAll("SYSTEM: 의사가 누군가를 구했습니다!\n");
+                WriteAll("SYSTEM: [" + mafiaTarget + "]님이 의사의 힐을 받았습니다!\n");
                 AppendText(mafiaTarget + " 의사가 구함");
             } else if (savedBySoldier) {
                 WriteAll("SYSTEM: [" + mafiaTarget + "] 군인이 마피아의 공격을 막아냈습니다!\n");
@@ -670,6 +673,11 @@ public class MafiaGameServer extends JFrame {
         }
 
         // 경찰과 스파이 조사 결과는 즉시 전송되므로 여기서는 처리하지 않음
+
+        // 의사가 구한 경우 효과음 재생 (낮 사운드와 겹치지 않도록 여기서 재생)
+        if (mafiaTarget != null && mafiaTarget.equals(doctorTarget)) {
+            WriteAll("SOUND:GameSound/Citizen/doctor.wav\n");
+        }
     }
 
     // 낮 페이즈
@@ -743,6 +751,7 @@ public class MafiaGameServer extends JFrame {
     private void startVotePhase() {
         gamePhase = "VOTE";
         voteCount.clear();
+        hasVoted.clear(); // 투표 초기화 (중복 방지)
 
         // 살아있는 모든 플레이어를 투표 대상으로 초기화
         for (String player : aliveStatus.keySet()) {
@@ -1118,6 +1127,15 @@ public class MafiaGameServer extends JFrame {
                                 return;
                             }
 
+                            // 이미 행동한 경우 중복 방지
+                            if (hasActed.get(UserName) != null && hasActed.get(UserName)) {
+                                WriteOne("SYSTEM: 이미 능력을 사용했습니다! 밤마다 1회만 사용 가능합니다.\n");
+                                AppendText(UserName + " 중복 행동 시도 차단");
+                                return;
+                            }
+
+                            // 행동 기록
+                            hasActed.put(UserName, true);
                             nightActions.put(actionRole, target);
                             AppendText(UserName + "(" + role + ") -> " + target);
 
@@ -1153,6 +1171,8 @@ public class MafiaGameServer extends JFrame {
                                         // 마피아를 조사했다면 접선
                                         if (targetRole.equals("MAFIA") && !spyContactedMafia) {
                                             spyContactedMafia = true;
+                                            // 스파이 접선 사운드 재생
+                                            WriteAll("SOUND:GameSound/Mafia_team/spy_zupsun.wav\n");
                                             // 마피아에게 스파이 정보 알림
                                             for (UserService mafiaUser : UserVec) {
                                                 if (mafiaUser.role.equals("MAFIA")) {
@@ -1251,6 +1271,11 @@ public class MafiaGameServer extends JFrame {
                             if (voteBanned.get(UserName) != null && voteBanned.get(UserName)) {
                                 WriteOne("SYSTEM: 건달에 의해 투표가 금지되었습니다!\n");
                             }
+                            // 이미 투표한 경우
+                            else if (hasVoted.get(UserName) != null && hasVoted.get(UserName)) {
+                                WriteOne("SYSTEM: 이미 투표했습니다! 1인당 1표만 가능합니다.\n");
+                                AppendText(UserName + " 중복 투표 시도 차단");
+                            }
                             // 죽은 사람은 투표할 수 없음
                             else if (aliveStatus.get(UserName) != null && !aliveStatus.get(UserName)) {
                                 WriteOne("SYSTEM: 죽은 사람은 투표할 수 없습니다!\n");
@@ -1259,6 +1284,8 @@ public class MafiaGameServer extends JFrame {
                             else if (aliveStatus.get(target) != null && !aliveStatus.get(target)) {
                                 WriteOne("SYSTEM: 죽은 사람에게는 투표할 수 없습니다!\n");
                             } else if (voteCount.containsKey(target)) {
+                                // 투표 기록
+                                hasVoted.put(UserName, true);
                                 // 정치인이면 2표, 그 외는 1표
                                 int votes = role.equals("POLITICIAN") ? 2 : 1;
                                 voteCount.put(target, voteCount.get(target) + votes);
