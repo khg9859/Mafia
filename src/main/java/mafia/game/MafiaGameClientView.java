@@ -1,3 +1,4 @@
+package mafia.game;
 
 // MafiaGameClientView.java
 import java.awt.*;
@@ -347,13 +348,21 @@ public class MafiaGameClientView extends JFrame {
         private void loadRoleImage(String role) {
             try {
                 String imageName = roleImageMap.getOrDefault(role, "default.png");
-                String imagePath = "info/" + imageName;
+                String imagePath = "/info/" + imageName;
 
-                BufferedImage img = ImageIO.read(new File(imagePath));
-                Image scaledImg = img.getScaledInstance(130, 180, Image.SCALE_SMOOTH);
-                roleImage = scaledImg;
-                imageLabel.setIcon(new ImageIcon(scaledImg));
-                imageLabel.setText("");
+                InputStream imgStream = getClass().getResourceAsStream(imagePath);
+                if (imgStream != null) {
+                    BufferedImage img = ImageIO.read(imgStream);
+                    Image scaledImg = img.getScaledInstance(130, 180, Image.SCALE_SMOOTH);
+                    roleImage = scaledImg;
+                    imageLabel.setIcon(new ImageIcon(scaledImg));
+                    imageLabel.setText("");
+                    imgStream.close();
+                } else {
+                    imageLabel.setText("?");
+                    imageLabel.setFont(new Font("Arial", Font.BOLD, 48));
+                    imageLabel.setForeground(Color.GRAY);
+                }
             } catch (IOException e) {
                 imageLabel.setText("?");
                 imageLabel.setFont(new Font("Arial", Font.BOLD, 48));
@@ -641,18 +650,18 @@ public class MafiaGameClientView extends JFrame {
 
         new Thread(() -> {
             try {
-                File soundFile = new File(filePath);
-                if (!soundFile.exists()) {
+                InputStream soundStream = getClass().getResourceAsStream(filePath);
+                if (soundStream == null) {
                     System.err.println("Sound file not found: " + filePath);
                     return;
                 }
 
-                AudioInputStream audioInputStream = AudioSystem.getAudioInputStream(soundFile);
+                AudioInputStream audioInputStream = AudioSystem.getAudioInputStream(soundStream);
                 currentClip = AudioSystem.getClip();
                 currentClip.open(audioInputStream);
                 currentClip.start();
 
-                System.out.println("Playing sound: " + soundFile.getName());
+                System.out.println("Playing sound: " + filePath);
 
                 // Wait for the clip to finish
                 currentClip.addLineListener(event -> {

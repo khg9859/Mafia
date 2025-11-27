@@ -1,3 +1,4 @@
+package mafia.game;
 
 // MafiaGameServer.java
 import java.awt.EventQueue;
@@ -115,11 +116,14 @@ public class MafiaGameServer extends JFrame {
 
         // 아이콘 추가
         try {
-            javax.swing.ImageIcon icon = new javax.swing.ImageIcon("info/ServerImg.png");
-            java.awt.Image img = icon.getImage();
-            java.awt.Image newImg = img.getScaledInstance(40, 40, java.awt.Image.SCALE_SMOOTH);
-            titleLabel.setIcon(new javax.swing.ImageIcon(newImg));
-            titleLabel.setIconTextGap(15); // 아이콘과 텍스트 사이 간격
+            java.net.URL iconURL = getClass().getResource("/info/ServerImg.png");
+            if (iconURL != null) {
+                javax.swing.ImageIcon icon = new javax.swing.ImageIcon(iconURL);
+                java.awt.Image img = icon.getImage();
+                java.awt.Image newImg = img.getScaledInstance(40, 40, java.awt.Image.SCALE_SMOOTH);
+                titleLabel.setIcon(new javax.swing.ImageIcon(newImg));
+                titleLabel.setIconTextGap(15); // 아이콘과 텍스트 사이 간격
+            }
         } catch (Exception e) {
             System.out.println("Icon load failed: " + e.getMessage());
         }
@@ -251,7 +255,10 @@ public class MafiaGameServer extends JFrame {
 
         public BackgroundPanel() {
             try {
-                backgroundImage = new javax.swing.ImageIcon("info/server_background.jpg").getImage();
+                java.net.URL bgURL = getClass().getResource("/info/server_background.jpg");
+                if (bgURL != null) {
+                    backgroundImage = new javax.swing.ImageIcon(bgURL).getImage();
+                }
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -303,7 +310,7 @@ public class MafiaGameServer extends JFrame {
 
         WriteAll("SYSTEM: ===== 마피아 게임이 시작되었습니다! =====\n");
         WriteAll("SYSTEM: 참가자 수: " + UserVec.size() + "명\n");
-        playSound("GameSound/game_start.wav"); // Play locally on server
+        playSound("/GameSound/game_start.wav"); // Play locally on server
 
         // 게임 시작 후 밤 페이즈로 전환
         new Thread(() -> {
@@ -481,27 +488,27 @@ public class MafiaGameServer extends JFrame {
             case "MAFIA":
                 return null; // Mafia.wav is for death only
             case "MADAME":
-                return "GameSound/Mafia_team/madam.wav";
+                return "/GameSound/Mafia_team/madam.wav";
             case "SPY":
-                return "GameSound/Mafia_team/spy_zupsun.wav";
+                return "/GameSound/Mafia_team/spy_zupsun.wav";
             case "DOCTOR":
-                return "GameSound/Citizen/doctor.wav";
+                return "/GameSound/Citizen/doctor.wav";
             case "POLICE":
-                return "GameSound/Citizen/police.wav";
+                return "/GameSound/Citizen/police.wav";
             case "POLITICIAN":
-                return "GameSound/Citizen/politician.wav";
+                return "/GameSound/Citizen/politician.wav";
             case "SOLDIER":
-                return "GameSound/Citizen/soldier.wav";
+                return "/GameSound/Citizen/soldier.wav";
             case "SHAMAN":
-                return "GameSound/Citizen/SHAMAN.wav";
+                return "/GameSound/Citizen/SHAMAN.wav";
             case "REPORTER":
-                return "GameSound/Citizen/reporter.wav";
+                return "/GameSound/Citizen/reporter.wav";
             case "GANGSTER":
-                return "GameSound/Citizen/gangster.wav";
+                return "/GameSound/Citizen/gangster.wav";
             case "PRIEST":
-                return "GameSound/Citizen/priest.wav";
+                return "/GameSound/Citizen/priest.wav";
             case "GHOUL":
-                return "GameSound/Citizen/ghoul.wav";
+                return "/GameSound/Citizen/ghoul.wav";
             default:
                 return null;
         }
@@ -553,7 +560,7 @@ public class MafiaGameServer extends JFrame {
 
         AppendText("===== " + dayCount + "일차 밤 =====");
         WriteAll("PHASE:NIGHT\n");
-        playSound("GameSound/night.wav"); // Play locally
+        playSound("/GameSound/night.wav"); // Play locally
         WriteAll("SYSTEM: ===== " + dayCount + "일차 밤이 되었습니다 =====\n");
         WriteAll("SYSTEM: 마피아는 제거할 대상을, 의사는 보호할 대상을, 경찰은 조사할 대상을 선택하세요.\n");
 
@@ -619,7 +626,7 @@ public class MafiaGameServer extends JFrame {
             } else {
                 aliveStatus.put(mafiaTarget, false);
                 WriteAll("SYSTEM: [" + mafiaTarget + "]님이 마피아에게 제거되었습니다.\n");
-                playSound("GameSound/Mafia_team/Mafia.wav"); // Play locally
+                playSound("/GameSound/Mafia_team/Mafia.wav"); // Play locally
                 AppendText(mafiaTarget + " 사망");
 
                 // 해당 플레이어에게 사망 알림
@@ -683,7 +690,7 @@ public class MafiaGameServer extends JFrame {
 
         AppendText("===== " + dayCount + "일차 낮 =====");
         WriteAll("PHASE:DAY\n");
-        playSound("GameSound/morning.wav"); // Play locally
+        playSound("/GameSound/morning.wav"); // Play locally
         WriteAll("SYSTEM: ===== " + dayCount + "일차 낮이 되었습니다 =====\n");
 
         // 유혹 초기화 (새로운 낮이 시작되면 이전 유혹 해제)
@@ -753,7 +760,7 @@ public class MafiaGameServer extends JFrame {
 
         AppendText("===== 투표 시작 =====");
         WriteAll("PHASE:VOTE\n");
-        playSound("GameSound/vote.wav"); // Play locally
+        playSound("/GameSound/vote.wav"); // Play locally
         WriteAll("SYSTEM: ===== 투표 시작 =====\n");
         WriteAll("SYSTEM: 제거할 플레이어를 투표하세요! (20초)\n");
 
@@ -870,18 +877,18 @@ public class MafiaGameServer extends JFrame {
 
         new Thread(() -> {
             try {
-                File soundFile = new File(filePath);
-                if (!soundFile.exists()) {
+                InputStream soundStream = getClass().getResourceAsStream(filePath);
+                if (soundStream == null) {
                     System.err.println("Sound file not found: " + filePath);
                     return;
                 }
 
-                AudioInputStream audioInputStream = AudioSystem.getAudioInputStream(soundFile);
+                AudioInputStream audioInputStream = AudioSystem.getAudioInputStream(soundStream);
                 currentClip = AudioSystem.getClip();
                 currentClip.open(audioInputStream);
                 currentClip.start();
 
-                System.out.println("Playing sound: " + soundFile.getName());
+                System.out.println("Playing sound: " + filePath);
 
                 // Wait for the clip to finish
                 currentClip.addLineListener(event -> {
