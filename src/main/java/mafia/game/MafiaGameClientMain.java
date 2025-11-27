@@ -1,5 +1,5 @@
+package mafia.game;
 
-// MafiaGameClientMain.java
 import java.awt.EventQueue;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -65,14 +65,17 @@ public class MafiaGameClientMain extends JFrame {
 
         // Logo (Optional)
         try {
-            javax.swing.ImageIcon icon = new javax.swing.ImageIcon("info/ServerImg.png");
-            java.awt.Image img = icon.getImage();
-            java.awt.Image newImg = img.getScaledInstance(80, 80, java.awt.Image.SCALE_SMOOTH);
-            JLabel logoLabel = new JLabel(new javax.swing.ImageIcon(newImg));
-            logoLabel.setHorizontalAlignment(SwingConstants.CENTER);
-            gbc.gridy = 0;
-            gbc.insets = new java.awt.Insets(30, 20, 10, 20);
-            mainPanel.add(logoLabel, gbc);
+            java.net.URL iconUrl = getClass().getClassLoader().getResource("info/ServerImg.png");
+            if (iconUrl != null) {
+                javax.swing.ImageIcon icon = new javax.swing.ImageIcon(iconUrl);
+                java.awt.Image img = icon.getImage();
+                java.awt.Image newImg = img.getScaledInstance(80, 80, java.awt.Image.SCALE_SMOOTH);
+                JLabel logoLabel = new JLabel(new javax.swing.ImageIcon(newImg));
+                logoLabel.setHorizontalAlignment(SwingConstants.CENTER);
+                gbc.gridy = 0;
+                gbc.insets = new java.awt.Insets(30, 20, 10, 20);
+                mainPanel.add(logoLabel, gbc);
+            }
         } catch (Exception e) {
             // Ignore if image not found
         }
@@ -136,7 +139,10 @@ public class MafiaGameClientMain extends JFrame {
 
         public BackgroundPanel() {
             try {
-                backgroundImage = new javax.swing.ImageIcon("info/background.png").getImage();
+                java.net.URL bgUrl = getClass().getClassLoader().getResource("info/background.png");
+                if (bgUrl != null) {
+                    backgroundImage = new javax.swing.ImageIcon(bgUrl).getImage();
+                }
             } catch (Exception e) {
                 e.printStackTrace();
             }

@@ -1,5 +1,5 @@
+package mafia.game;
 
-// MafiaGameClientView.java
 import java.awt.*;
 import java.awt.event.*;
 import java.awt.image.BufferedImage;
@@ -352,11 +352,16 @@ public class MafiaGameClientView extends JFrame {
                 String imageName = roleImageMap.getOrDefault(role, "default.png");
                 String imagePath = "info/" + imageName;
 
-                BufferedImage img = ImageIO.read(new File(imagePath));
-                Image scaledImg = img.getScaledInstance(130, 180, Image.SCALE_SMOOTH);
-                roleImage = scaledImg;
-                imageLabel.setIcon(new ImageIcon(scaledImg));
-                imageLabel.setText("");
+                java.net.URL imgUrl = getClass().getClassLoader().getResource(imagePath);
+                if (imgUrl != null) {
+                    BufferedImage img = ImageIO.read(imgUrl);
+                    Image scaledImg = img.getScaledInstance(130, 180, Image.SCALE_SMOOTH);
+                    roleImage = scaledImg;
+                    imageLabel.setIcon(new ImageIcon(scaledImg));
+                    imageLabel.setText("");
+                } else {
+                    throw new IOException("Image not found: " + imagePath);
+                }
             } catch (IOException e) {
                 imageLabel.setText("?");
                 imageLabel.setFont(new Font("Arial", Font.BOLD, 48));

@@ -1,5 +1,5 @@
+package mafia.game;
 
-// MafiaGameServer.java
 import java.awt.EventQueue;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -117,11 +117,14 @@ public class MafiaGameServer extends JFrame {
 
         // 아이콘 추가
         try {
-            javax.swing.ImageIcon icon = new javax.swing.ImageIcon("info/ServerImg.png");
-            java.awt.Image img = icon.getImage();
-            java.awt.Image newImg = img.getScaledInstance(40, 40, java.awt.Image.SCALE_SMOOTH);
-            titleLabel.setIcon(new javax.swing.ImageIcon(newImg));
-            titleLabel.setIconTextGap(15); // 아이콘과 텍스트 사이 간격
+            java.net.URL iconUrl = getClass().getClassLoader().getResource("info/ServerImg.png");
+            if (iconUrl != null) {
+                javax.swing.ImageIcon icon = new javax.swing.ImageIcon(iconUrl);
+                java.awt.Image img = icon.getImage();
+                java.awt.Image newImg = img.getScaledInstance(40, 40, java.awt.Image.SCALE_SMOOTH);
+                titleLabel.setIcon(new javax.swing.ImageIcon(newImg));
+                titleLabel.setIconTextGap(15); // 아이콘과 텍스트 사이 간격
+            }
         } catch (Exception e) {
             System.out.println("Icon load failed: " + e.getMessage());
         }
@@ -253,7 +256,10 @@ public class MafiaGameServer extends JFrame {
 
         public BackgroundPanel() {
             try {
-                backgroundImage = new javax.swing.ImageIcon("info/server_background.jpg").getImage();
+                java.net.URL bgUrl = getClass().getClassLoader().getResource("info/server_background.jpg");
+                if (bgUrl != null) {
+                    backgroundImage = new javax.swing.ImageIcon(bgUrl).getImage();
+                }
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -888,51 +894,28 @@ public class MafiaGameServer extends JFrame {
         }).start();
     }
 
-    // Play sound locally on server
-    private void playSound(String filePath) {
-        if (filePath == null || filePath.isEmpty()) {
-            return;
-        }
-
-        // Stop previous sound
-        if (currentClip != null && currentClip.isRunning()) {
-            currentClip.stop();
-            currentClip.close();
-            currentClip = null;
-        }
-
-        new Thread(() -> {
-            try {
-                File soundFile = new File(filePath);
-                if (!soundFile.exists()) {
-                    System.err.println("Sound file not found: " + filePath);
-                    return;
-                }
-
-                AudioInputStream audioInputStream = AudioSystem.getAudioInputStream(soundFile);
-                currentClip = AudioSystem.getClip();
-                currentClip.open(audioInputStream);
-                currentClip.start();
-
-                System.out.println("Playing sound: " + soundFile.getName());
-
-                // Wait for the clip to finish
-                currentClip.addLineListener(event -> {
-                    if (event.getType() == LineEvent.Type.STOP) {
-                        currentClip.close();
-                        try {
-                            audioInputStream.close();
-                        } catch (IOException e) {
-                            e.printStackTrace();
-                        }
-                    }
-                });
-            } catch (UnsupportedAudioFileException e) {
-                System.err.println("Audio format not supported: " + filePath);
-            } catch (Exception e) {
-                System.err.println("Error playing sound: " + filePath + " - " + e.getMessage());
+    // 효과음 재생 (서버 로컬)
+    public void playSound(String path) {
+        try {
+            // Stop previous sound
+            if (currentClip != null && currentClip.isRunning()) {
+                currentClip.stop();
+                currentClip.close();
             }
-        }).start();
+
+            java.net.URL soundUrl = getClass().getClassLoader().getResource(path);
+            if (soundUrl == null) {
+                System.out.println("Sound not found: " + path);
+                return;
+            }
+
+            AudioInputStream audioInputStream = AudioSystem.getAudioInputStream(soundUrl);
+            currentClip = AudioSystem.getClip();
+            currentClip.open(audioInputStream);
+            currentClip.start();
+        } catch (Exception ex) {
+            System.out.println("Error playing sound: " + ex.getMessage());
+        }
     }
 
     // Stop sound locally on server
