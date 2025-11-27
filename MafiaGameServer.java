@@ -591,10 +591,32 @@ public class MafiaGameServer extends JFrame {
         AppendText("스파이 조사: " + (spyTarget != null ? spyTarget : "없음"));
         AppendText("건달 타겟: " + (gangsterTarget != null ? gangsterTarget : "없음"));
 
+        // 건달 플레이어 찾기
+        String gangsterName = "";
+        for (UserService user : UserVec) {
+            if (user.role.equals("GANGSTER")) {
+                gangsterName = user.UserName;
+                break;
+            }
+        }
+
         // 건달의 투표 금지 처리
-        if (gangsterTarget != null) {
+        boolean gangsterSeduced = !gangsterName.isEmpty() && seduced.get(gangsterName) != null
+                && seduced.get(gangsterName);
+
+        if (gangsterTarget != null && !gangsterSeduced) {
             voteBanned.put(gangsterTarget, true);
             AppendText(gangsterTarget + " 다음 투표 금지됨");
+
+            // 대상에게 알림
+            for (UserService user : UserVec) {
+                if (user.UserName.equals(gangsterTarget)) {
+                    user.WriteOne("SYSTEM: 건달에게 협박당해 내일 투표를 할 수 없습니다!\n");
+                    break;
+                }
+            }
+        } else if (gangsterTarget != null && gangsterSeduced) {
+            AppendText("건달(" + gangsterName + ") 유혹당해 능력 무효화");
         }
 
         // 마피아의 공격 처리
@@ -710,14 +732,16 @@ public class MafiaGameServer extends JFrame {
                     if (priestTarget.equals(ghoulVictim)) {
                         targetUser.setRole("CITIZEN");
                         targetUser.WriteOne("ROLE:CITIZEN\n");
+                        targetUser.WriteOne("DEAD:false\n"); // 부활 상태 알림 (채팅 가능하게)
                         targetUser.WriteOne("SYSTEM: 🌟 성직자에 의해 부활했습니다! 🌟\n");
                         targetUser.WriteOne("SYSTEM: 당신의 직업은 도굴꾼에게 빼앗겨 [시민]이 되었습니다.\n");
                         targetUser.WriteOne("SYSTEM: " + getRoleDescription("CITIZEN") + "\n");
                         AppendText(priestTarget + " 부활 (도굴 희생자 -> 시민)");
                     } else {
+                        targetUser.WriteOne("DEAD:false\n"); // 부활 상태 알림 (채팅 가능하게)
                         targetUser.WriteOne("SYSTEM: 🌟 성직자에 의해 부활했습니다! 🌟\n");
+                        AppendText(priestTarget + " 부활");
                     }
-                    targetUser.WriteOne("DEAD:false\n");
                     break;
                 }
             }
@@ -1129,7 +1153,7 @@ public class MafiaGameServer extends JFrame {
 
                             // 이미 행동한 경우 중복 방지
                             if (hasActed.get(UserName) != null && hasActed.get(UserName)) {
-                                WriteOne("SYSTEM: 이미 능력을 사용했습니다! 밤마다 1회만 사용 가능합니다.\n");
+                                // 이미 사용했으므로 조용히 무시
                                 AppendText(UserName + " 중복 행동 시도 차단");
                                 return;
                             }
@@ -1269,7 +1293,7 @@ public class MafiaGameServer extends JFrame {
 
                             // 건달에 의해 투표가 금지된 경우
                             if (voteBanned.get(UserName) != null && voteBanned.get(UserName)) {
-                                WriteOne("SYSTEM: 건달에 의해 투표가 금지되었습니다!\n");
+                                WriteOne("SYSTEM: [경고] 건달에게 협박당해 투표권을 행사할 수 없습니다!\n");
                             }
                             // 이미 투표한 경우
                             else if (hasVoted.get(UserName) != null && hasVoted.get(UserName)) {
