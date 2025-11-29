@@ -133,6 +133,89 @@ done
   1. 서버를 실행한 컴퓨터의 IP 주소 확인
   2. 다른 컴퓨터에서 클라이언트 실행 시 해당 IP 주소 입력
 
+## 🧪 테스트 모드 (개발자용)
+
+게임 테스트를 위한 편의 기능이 구현되어 있습니다.
+
+### 테스트 모드 활성화
+
+#### 클라이언트 (MafiaGameClientMain.java)
+```java
+// 52번 줄
+private static final boolean TEST_MODE = true;
+```
+
+**동작:**
+- ✅ 로그인 화면 건너뛰기
+- ✅ 자동으로 랜덤 이름(`Player_XXXX`) 생성
+- ✅ 자동으로 `127.0.0.1:30000` 서버에 접속
+
+#### 서버 (MafiaGameServer.java)
+```java
+// 74번 줄
+private static final boolean TEST_MODE = true;
+
+// 78번 줄
+private static final int AUTO_START_PLAYER_COUNT = 8;
+```
+
+**동작:**
+- ✅ 설정된 인원수(기본 8명)가 접속하면 자동으로 게임 시작
+- ✅ 수동으로 "Start Game" 버튼을 누를 필요 없음
+
+### 테스트 모드 사용법
+
+#### 1. 빠른 테스트 (권장)
+```bash
+# 먼저 컴파일
+mvn clean compile
+
+# 서버 1개 실행
+java -cp target/classes mafia.game.MafiaGameServer &
+sleep 2
+
+# 클라이언트 8개 연속 실행
+for i in {1..8}; do
+  java -cp target/classes mafia.game.MafiaGameClientMain &
+  sleep 0.5
+done
+
+# 자동으로 8명이 모이면 게임 시작!
+```
+
+#### 2. 수동 실행
+```bash
+# 서버 실행
+java -cp target/classes mafia.game.MafiaGameServer
+
+# 새 터미널 8개를 열어서 각각 실행
+java -cp target/classes mafia.game.MafiaGameClientMain
+java -cp target/classes mafia.game.MafiaGameClientMain
+java -cp target/classes mafia.game.MafiaGameClientMain
+# ... (총 8번)
+```
+
+### 배포 모드로 전환
+
+**배포 전에 반드시** 두 파일 모두에서 `TEST_MODE`를 `false`로 변경하세요!
+
+```java
+// MafiaGameClientMain.java 52번 줄
+private static final boolean TEST_MODE = false;  // true -> false
+
+// MafiaGameServer.java 74번 줄
+private static final boolean TEST_MODE = false;  // true -> false
+```
+
+### 테스트 모드 vs 배포 모드 비교
+
+| 기능 | 테스트 모드 (true) | 배포 모드 (false) |
+|------|-------------------|------------------|
+| 클라이언트 로그인 | 자동 (랜덤 이름) | 수동 (이름 입력) |
+| 게임 시작 | 자동 (8명 접속 시) | 수동 (버튼 클릭) |
+| 테스트 편의성 | ⭐⭐⭐⭐⭐ | ⭐⭐ |
+| 실제 게임 진행 | ⭐⭐ | ⭐⭐⭐⭐⭐ |
+
 ## 📦 프로젝트 구조
 
 ```

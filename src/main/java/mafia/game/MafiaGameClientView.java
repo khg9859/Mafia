@@ -1,105 +1,235 @@
 package mafia.game;
 
-// MafiaGameClientView.java
+/**
+ * 마피아 게임 클라이언트 뷰 클래스
+ *
+ * 이 클래스는 마피아 게임의 메인 게임 화면을 담당합니다.
+ * 서버와의 통신, 게임 진행 상태 표시, 플레이어 카드 표시, 채팅 기능을 제공합니다.
+ *
+ * 주요 기능:
+ * - 서버와의 소켓 통신 (메시지 송수신)
+ * - 게임 페이즈 표시 (대기, 밤, 낮, 투표)
+ * - 플레이어 카드 그리드 (최대 8명)
+ * - 실시간 채팅 시스템
+ * - 역할별 행동 처리 (투표, 능력 사용)
+ * - 사운드 재생 기능
+ *
+ * @author Mafia Game Team
+ * @version 2.0
+ */
+
+// AWT 및 그래픽 관련 임포트
 import java.awt.*;
 import java.awt.event.*;
 import java.awt.image.BufferedImage;
+
+// IO 및 네트워크 관련 임포트
 import java.io.*;
 import java.net.Socket;
+
+// 유틸리티 임포트
 import java.util.*;
+
+// 이미지 및 사운드 처리 임포트
 import javax.imageio.ImageIO;
 import javax.sound.sampled.*;
+
+// Swing UI 컴포넌트 임포트
 import javax.swing.*;
 import javax.swing.border.*;
 
+/**
+ * MafiaGameClientView 메인 클래스
+ * JFrame을 상속받아 게임 화면 GUI를 제공합니다.
+ */
 public class MafiaGameClientView extends JFrame {
+
+    // ========================================
+    // UI 컴포넌트
+    // ========================================
+
+    /**
+     * 메인 컨텐츠 패널
+     */
     private JPanel contentPane;
+
+    /**
+     * 채팅 입력 필드
+     */
     private JTextField txtInput;
-    private String UserName;
+
+    /**
+     * 전송 버튼
+     */
     private JButton btnSend;
+
+    /**
+     * 찬성 버튼
+     */
+    private JButton btnAgree;
+
+    /**
+     * 반대 버튼
+     */
+    private JButton btnDisagree;
+
+    /**
+     * 찬반 투표 버튼 패널
+     */
+    private JPanel agreeDisagreePanel;
+
+    /**
+     * 채팅 로그 텍스트 영역
+     */
     private JTextArea textArea;
+
+    /**
+     * 플레이어 수 표시 레이블
+     */
+    private JLabel lblPlayerCount;
+
+    /**
+     * 게임 페이즈 정보 레이블
+     */
+    private JLabel lblPhaseInfo;
+
+    /**
+     * 플레이어 카드 그리드 패널
+     */
+    private JPanel cardGridPanel;
+
+    /**
+     * 플레이어 카드 배열 (최대 8명)
+     */
+    private PlayerCard[] playerCards;
+
+    // ========================================
+    // 네트워크 관련 변수
+    // ========================================
+
+    /**
+     * 사용자 이름
+     */
+    private String UserName;
+
+    /**
+     * 서버 소켓
+     */
     private Socket socket;
+
+    /**
+     * 입력 스트림
+     */
     private InputStream is;
+
+    /**
+     * 출력 스트림
+     */
     private OutputStream os;
+
+    /**
+     * 데이터 입력 스트림
+     */
     private DataInputStream dis;
+
+    /**
+     * 데이터 출력 스트림
+     */
     private DataOutputStream dos;
 
-    // UI Components
-    private JLabel lblPlayerCount;
-    private JLabel lblPhaseInfo;
-    private JPanel cardGridPanel;
-    private PlayerCard[] playerCards;
-    private Map<String, PlayerInfo> playerMap;
-    private PlayerCard selectedCard;
+    // ========================================
+    // 게임 상태 변수
+    // ========================================
 
+    /**
+     * 현재 플레이어의 역할
+     */
     private String myRole = "";
+
+    /**
+     * 현재 게임 페이즈 (WAITING, NIGHT, DAY, VOTE)
+     */
     private String currentPhase = "WAITING";
+
+    /**
+     * 플레이어 사망 여부
+     */
     private boolean isDead = false;
+
+    /**
+     * 최대 플레이어 수
+     */
     private int maxPlayers = 8;
+
+    /**
+     * 게임 시작 사운드 재생 여부
+     */
     private boolean gameStartSoundPlayed = false;
 
-    // Role image mapping
+    /**
+     * 현재 선택된 플레이어 카드
+     */
+    private PlayerCard selectedCard;
+
+    // ========================================
+    // 데이터 구조
+    // ========================================
+
+    /**
+     * 플레이어 정보 맵 (이름 -> 정보)
+     */
+    private Map<String, PlayerInfo> playerMap;
+
+    /**
+     * 역할 이미지 매핑 (역할 -> 이미지 파일명)
+     */
     private Map<String, String> roleImageMap;
 
-    // Sound mappings
-    // Sound mappings
-    // Maps removed as sound is controlled by server
-    private Clip currentClip; // 현재 재생 중인 사운드 (통합)
+    // ========================================
+    // 사운드 관련 변수
+    // ========================================
 
+    /**
+     * 현재 재생 중인 사운드 클립
+     */
+    private Clip currentClip;
+
+    // ========================================
+    // 생성자 및 초기화
+    // ========================================
+
+    /**
+     * 게임 뷰 생성자
+     * 서버에 연결하고 UI를 초기화합니다.
+     *
+     * @param username 사용자 이름
+     * @param ip_addr 서버 IP 주소
+     * @param port_no 서버 포트 번호
+     */
     public MafiaGameClientView(String username, String ip_addr, String port_no) {
-        initializeRoleImageMap();
-        initializeRoleImageMap();
-        // Sound maps are no longer needed
-        playerMap = new HashMap<>();
+        // 초기화
+        initializeDataStructures();
 
-        setTitle("Mafia Game - " + username);
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setBounds(100, 100, 1200, 700);
+        // UI 생성
+        initializeUI(username);
 
-        contentPane = new JPanel();
-        contentPane.setBackground(new Color(30, 30, 30));
-        contentPane.setBorder(new EmptyBorder(0, 0, 0, 0));
-        setContentPane(contentPane);
-        contentPane.setLayout(null);
-
-        // Top status bar
-        createTopStatusBar();
-
-        // Left panel - Chat area
-        createChatPanel();
-
-        // Right panel - Player cards grid
-        createPlayerCardGrid();
-
-        setVisible(true);
-
-        AppendText("Connecting to " + ip_addr + ":" + port_no + "...\n");
-        UserName = username;
-
-        try {
-            socket = new Socket(ip_addr, Integer.parseInt(port_no));
-            is = socket.getInputStream();
-            dis = new DataInputStream(is);
-            os = socket.getOutputStream();
-            dos = new DataOutputStream(os);
-
-            SendMessage("/login " + UserName);
-            ListenNetwork net = new ListenNetwork();
-            net.start();
-
-            Myaction action = new Myaction();
-            btnSend.addActionListener(action);
-            txtInput.addActionListener(action);
-            txtInput.requestFocus();
-
-        } catch (NumberFormatException | IOException e) {
-            e.printStackTrace();
-            AppendText("Connection error!\n");
-        }
+        // 네트워크 연결
+        connectToServer(username, ip_addr, port_no);
     }
 
-    private void initializeRoleImageMap() {
+    /**
+     * 데이터 구조 초기화
+     */
+    private void initializeDataStructures() {
         roleImageMap = new HashMap<>();
+        playerMap = new HashMap<>();
+        initializeRoleImageMap();
+    }
+
+    /**
+     * 역할 이미지 매핑 초기화
+     */
+    private void initializeRoleImageMap() {
         roleImageMap.put("MAFIA", "mafia.png");
         roleImageMap.put("DOCTOR", "doctor.png");
         roleImageMap.put("POLICE", "police.png");
@@ -110,13 +240,90 @@ public class MafiaGameClientView extends JFrame {
         roleImageMap.put("REPORTER", "gija.png");
         roleImageMap.put("SHAMAN", "yeongmae.png");
         roleImageMap.put("PRIEST", "seongzik.png");
-        roleImageMap.put("MADAME", "dogul.png");
-        roleImageMap.put("SPY", "tamjung.png");
+        roleImageMap.put("MADAME", "madame.png");
+        roleImageMap.put("GHOUL", "dogul.png");
+        roleImageMap.put("SPY", "spy.png");
         roleImageMap.put("DEFAULT", "default.png");
     }
 
-    // Sound map initialization methods removed
+    /**
+     * UI 초기화
+     *
+     * @param username 사용자 이름
+     */
+    private void initializeUI(String username) {
+        setTitle("Mafia Game - " + username);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setBounds(100, 100, 1200, 700);
 
+        contentPane = new JPanel();
+        contentPane.setBackground(new Color(30, 30, 30));
+        contentPane.setBorder(new EmptyBorder(0, 0, 0, 0));
+        setContentPane(contentPane);
+        contentPane.setLayout(null);
+
+        // UI 컴포넌트 생성
+        createTopStatusBar();
+        createChatPanel();
+        createPlayerCardGrid();
+
+        setVisible(true);
+    }
+
+    /**
+     * 서버에 연결
+     *
+     * @param username 사용자 이름
+     * @param ip_addr 서버 IP 주소
+     * @param port_no 서버 포트 번호
+     */
+    private void connectToServer(String username, String ip_addr, String port_no) {
+        AppendText("Connecting to " + ip_addr + ":" + port_no + "...\n");
+        UserName = username;
+
+        try {
+            // 소켓 연결
+            socket = new Socket(ip_addr, Integer.parseInt(port_no));
+            is = socket.getInputStream();
+            dis = new DataInputStream(is);
+            os = socket.getOutputStream();
+            dos = new DataOutputStream(os);
+
+            // 로그인 메시지 전송
+            SendMessage("/login " + UserName);
+
+            // 네트워크 리스너 시작
+            ListenNetwork net = new ListenNetwork();
+            net.start();
+
+            // 액션 리스너 설정
+            setupActionListeners();
+
+            txtInput.requestFocus();
+
+        } catch (NumberFormatException | IOException e) {
+            e.printStackTrace();
+            AppendText("Connection error!\n");
+        }
+    }
+
+    /**
+     * 액션 리스너 설정
+     */
+    private void setupActionListeners() {
+        Myaction action = new Myaction();
+        btnSend.addActionListener(action);
+        txtInput.addActionListener(action);
+    }
+
+    // ========================================
+    // UI 컴포넌트 생성 메소드
+    // ========================================
+
+    /**
+     * 상단 상태바 생성
+     * 플레이어 수와 현재 페이즈를 표시합니다.
+     */
     private void createTopStatusBar() {
         JPanel topBar = new JPanel();
         topBar.setBackground(new Color(40, 40, 40));
@@ -124,14 +331,14 @@ public class MafiaGameClientView extends JFrame {
         topBar.setLayout(null);
         contentPane.add(topBar);
 
-        // Player count
+        // 플레이어 수 표시
         lblPlayerCount = new JLabel("0/8");
         lblPlayerCount.setFont(new Font("Arial", Font.BOLD, 18));
         lblPlayerCount.setForeground(Color.WHITE);
         lblPlayerCount.setBounds(20, 10, 100, 30);
         topBar.add(lblPlayerCount);
 
-        // Phase info
+        // 페이즈 정보 표시
         lblPhaseInfo = new JLabel("대기 중...");
         lblPhaseInfo.setFont(new Font("맑은 고딕", Font.BOLD, 16));
         lblPhaseInfo.setForeground(new Color(255, 200, 100));
@@ -140,6 +347,10 @@ public class MafiaGameClientView extends JFrame {
         topBar.add(lblPhaseInfo);
     }
 
+    /**
+     * 채팅 패널 생성
+     * 채팅 로그와 입력 필드를 포함합니다.
+     */
     private void createChatPanel() {
         JPanel chatPanel = new JPanel();
         chatPanel.setBackground(new Color(35, 35, 35));
@@ -148,14 +359,26 @@ public class MafiaGameClientView extends JFrame {
         chatPanel.setLayout(null);
         contentPane.add(chatPanel);
 
-        // Chat title
+        // 채팅 제목
         JLabel chatTitle = new JLabel("채팅");
         chatTitle.setFont(new Font("맑은 고딕", Font.BOLD, 14));
         chatTitle.setForeground(new Color(200, 200, 200));
         chatTitle.setBounds(15, 10, 200, 25);
         chatPanel.add(chatTitle);
 
-        // Chat area
+        // 채팅 로그 영역
+        createChatArea(chatPanel);
+
+        // 입력 영역
+        createInputArea(chatPanel);
+    }
+
+    /**
+     * 채팅 로그 영역 생성
+     *
+     * @param chatPanel 채팅 패널
+     */
+    private void createChatArea(JPanel chatPanel) {
         JScrollPane scrollPane = new JScrollPane();
         scrollPane.setBounds(10, 40, 520, 490);
         scrollPane.setBorder(null);
@@ -168,8 +391,15 @@ public class MafiaGameClientView extends JFrame {
         textArea.setForeground(new Color(220, 220, 220));
         textArea.setCaretColor(Color.WHITE);
         scrollPane.setViewportView(textArea);
+    }
 
-        // Input area
+    /**
+     * 입력 영역 생성
+     *
+     * @param chatPanel 채팅 패널
+     */
+    private void createInputArea(JPanel chatPanel) {
+        // 입력 필드
         txtInput = new JTextField();
         txtInput.setFont(new Font("맑은 고딕", Font.PLAIN, 13));
         txtInput.setBackground(new Color(45, 45, 45));
@@ -181,6 +411,7 @@ public class MafiaGameClientView extends JFrame {
         txtInput.setBounds(10, 540, 420, 40);
         chatPanel.add(txtInput);
 
+        // 전송 버튼
         btnSend = new JButton("전송");
         btnSend.setFont(new Font("맑은 고딕", Font.BOLD, 13));
         btnSend.setBackground(new Color(70, 130, 180));
@@ -191,6 +422,10 @@ public class MafiaGameClientView extends JFrame {
         chatPanel.add(btnSend);
     }
 
+    /**
+     * 플레이어 카드 그리드 생성
+     * 최대 8명의 플레이어를 2x4 그리드로 표시합니다.
+     */
     private void createPlayerCardGrid() {
         JPanel rightPanel = new JPanel();
         rightPanel.setBackground(new Color(30, 30, 30));
@@ -198,21 +433,21 @@ public class MafiaGameClientView extends JFrame {
         rightPanel.setLayout(null);
         contentPane.add(rightPanel);
 
-        // Title
+        // 제목
         JLabel gridTitle = new JLabel("플레이어");
         gridTitle.setFont(new Font("맑은 고딕", Font.BOLD, 14));
         gridTitle.setForeground(new Color(200, 200, 200));
         gridTitle.setBounds(15, 10, 200, 25);
         rightPanel.add(gridTitle);
 
-        // Card grid panel
+        // 카드 그리드 패널
         cardGridPanel = new JPanel();
         cardGridPanel.setBackground(new Color(30, 30, 30));
         cardGridPanel.setBounds(10, 45, 600, 535);
         cardGridPanel.setLayout(new GridLayout(2, 4, 15, 15));
         rightPanel.add(cardGridPanel);
 
-        // Initialize player cards
+        // 플레이어 카드 초기화
         playerCards = new PlayerCard[maxPlayers];
         for (int i = 0; i < maxPlayers; i++) {
             playerCards[i] = new PlayerCard(i);
@@ -220,262 +455,15 @@ public class MafiaGameClientView extends JFrame {
         }
     }
 
-    // Player Card Component
-    class PlayerCard extends JPanel {
-        private int index;
-        private JLabel imageLabel;
-        private JLabel nameLabel;
-        private JLabel statusIcon;
-        private String playerName;
-        private String role;
-        private boolean isAlive = true;
-        private boolean isEmpty = true;
-        private Image roleImage;
+    // ========================================
+    // 게임 로직 메소드
+    // ========================================
 
-        public PlayerCard(int index) {
-            this.index = index;
-            setLayout(null);
-            setBackground(new Color(45, 45, 45));
-            setBorder(new LineBorder(new Color(70, 70, 70), 2));
-            setCursor(new Cursor(Cursor.HAND_CURSOR));
-
-            // Image area
-            imageLabel = new JLabel();
-            imageLabel.setBounds(5, 5, 130, 180);
-            imageLabel.setHorizontalAlignment(SwingConstants.CENTER);
-            imageLabel.setVerticalAlignment(SwingConstants.CENTER);
-            add(imageLabel);
-
-            // Status icon (top-right corner)
-            statusIcon = new JLabel();
-            statusIcon.setBounds(110, 10, 25, 25);
-            statusIcon.setFont(new Font("Arial", Font.BOLD, 20));
-            add(statusIcon);
-
-            // Name label
-            nameLabel = new JLabel("", SwingConstants.CENTER);
-            nameLabel.setFont(new Font("맑은 고딕", Font.BOLD, 12));
-            nameLabel.setForeground(Color.WHITE);
-            nameLabel.setBounds(5, 190, 130, 25);
-            add(nameLabel);
-
-            // Empty state
-            showEmptyState();
-
-            // Click listener
-            addMouseListener(new MouseAdapter() {
-                @Override
-                public void mouseClicked(MouseEvent e) {
-                    if (!isEmpty && isAlive && !isDead) {
-                        handleCardClick();
-                    }
-                }
-
-                @Override
-                public void mouseEntered(MouseEvent e) {
-                    if (!isEmpty && isAlive && !isDead) {
-                        setBorder(new LineBorder(new Color(100, 150, 200), 3));
-                    }
-                }
-
-                @Override
-                public void mouseExited(MouseEvent e) {
-                    if (selectedCard != PlayerCard.this) {
-                        setBorder(new LineBorder(new Color(70, 70, 70), 2));
-                    }
-                }
-            });
-        }
-
-        private void handleCardClick() {
-            if (currentPhase.equals("NIGHT") || currentPhase.equals("VOTE")) {
-                // Deselect previous card
-                if (selectedCard != null && selectedCard != this) {
-                    selectedCard.setBorder(new LineBorder(new Color(70, 70, 70), 2));
-                }
-
-                // Select this card
-                selectedCard = this;
-                setBorder(new LineBorder(new Color(255, 215, 0), 3));
-
-                // Perform action
-                performActionOnPlayer(playerName);
-            }
-        }
-
-        public void setPlayer(String name, String role, boolean alive) {
-            this.playerName = name;
-            this.role = role;
-            this.isAlive = alive;
-            this.isEmpty = false;
-
-            nameLabel.setText(name);
-
-            // Load role image
-            loadRoleImage(role);
-
-            // Update status
-            if (!alive) {
-                statusIcon.setText("💀");
-                statusIcon.setForeground(Color.RED);
-                setBackground(new Color(60, 40, 40));
-                applyGrayscale();
-            } else {
-                statusIcon.setText("");
-                setBackground(new Color(45, 45, 45));
-            }
-        }
-
-        public void clearPlayer() {
-            this.isEmpty = true;
-            this.playerName = null;
-            this.role = null;
-            this.isAlive = true;
-            showEmptyState();
-        }
-
-        private void showEmptyState() {
-            nameLabel.setText("");
-            statusIcon.setText("");
-            imageLabel.setIcon(null);
-            imageLabel.setText("+");
-            imageLabel.setFont(new Font("Arial", Font.PLAIN, 48));
-            imageLabel.setForeground(new Color(100, 100, 100));
-            setBackground(new Color(40, 40, 40));
-            setBorder(new LineBorder(new Color(60, 60, 60), 2, true));
-        }
-
-        private void loadRoleImage(String role) {
-            try {
-                String imageName = roleImageMap.getOrDefault(role, "default.png");
-                String imagePath = "/info/" + imageName;
-
-                InputStream imgStream = getClass().getResourceAsStream(imagePath);
-                if (imgStream != null) {
-                    BufferedImage img = ImageIO.read(imgStream);
-                    Image scaledImg = img.getScaledInstance(130, 180, Image.SCALE_SMOOTH);
-                    roleImage = scaledImg;
-                    imageLabel.setIcon(new ImageIcon(scaledImg));
-                    imageLabel.setText("");
-                    imgStream.close();
-                } else {
-                    imageLabel.setText("?");
-                    imageLabel.setFont(new Font("Arial", Font.BOLD, 48));
-                    imageLabel.setForeground(Color.GRAY);
-                }
-            } catch (IOException e) {
-                imageLabel.setText("?");
-                imageLabel.setFont(new Font("Arial", Font.BOLD, 48));
-                imageLabel.setForeground(Color.GRAY);
-            }
-        }
-
-        private void applyGrayscale() {
-            if (roleImage != null) {
-                BufferedImage buffered = new BufferedImage(
-                        roleImage.getWidth(null),
-                        roleImage.getHeight(null),
-                        BufferedImage.TYPE_INT_ARGB);
-                Graphics2D g2d = buffered.createGraphics();
-                g2d.drawImage(roleImage, 0, 0, null);
-                g2d.dispose();
-
-                for (int y = 0; y < buffered.getHeight(); y++) {
-                    for (int x = 0; x < buffered.getWidth(); x++) {
-                        int rgb = buffered.getRGB(x, y);
-                        int alpha = (rgb >> 24) & 0xff;
-                        int r = (rgb >> 16) & 0xff;
-                        int g = (rgb >> 8) & 0xff;
-                        int b = rgb & 0xff;
-
-                        int gray = (r + g + b) / 3;
-                        gray = (int) (gray * 0.5); // Darken
-
-                        int newRgb = (alpha << 24) | (gray << 16) | (gray << 8) | gray;
-                        buffered.setRGB(x, y, newRgb);
-                    }
-                }
-
-                imageLabel.setIcon(new ImageIcon(buffered));
-            }
-        }
-    }
-
-    // Network listener
-    class ListenNetwork extends Thread {
-        public void run() {
-            while (true) {
-                try {
-                    String msg = dis.readUTF();
-
-                    if (msg.startsWith("ROLE:")) {
-                        String role = msg.substring(5).trim();
-                        myRole = role;
-                        AppendText("당신의 역할: " + getRoleDisplayName(role) + "\n");
-                        // Sound is now handled by server command
-                    } else if (msg.startsWith("PHASE:")) {
-                        String phase = msg.substring(6).trim();
-                        currentPhase = phase;
-                        updatePhaseDisplay(phase);
-                        // Sound is now handled by server command
-                    } else if (msg.startsWith("PLAYERS:")) {
-                        String players = msg.substring(8).trim();
-                        updatePlayerCards(players);
-                    } else if (msg.startsWith("DEAD:")) {
-                        String status = msg.substring(5).trim();
-                        if (status.equals("true")) {
-                            isDead = true;
-                            AppendText("=== 당신은 사망했습니다. ===\n");
-                            // 사망 사운드는 제거 (마피아에게 죽었을 때만 재생)
-                        } else if (status.equals("false")) {
-                            isDead = false;
-                            AppendText("=== 부활했습니다! ===\n");
-                        }
-                    } else if (msg.startsWith("SOUND:")) {
-                        String soundPath = msg.substring(6).trim();
-                        playServerSound(soundPath);
-                    } else {
-                        AppendText(msg);
-                        // Death sound is now handled by server command
-                    }
-
-                } catch (IOException e) {
-                    AppendText("연결이 끊어졌습니다!\n");
-                    try {
-                        dos.close();
-                        dis.close();
-                        socket.close();
-                        break;
-                    } catch (Exception ee) {
-                        break;
-                    }
-                }
-            }
-        }
-    }
-
-    // Chat action
-    class Myaction implements ActionListener {
-        @Override
-        public void actionPerformed(ActionEvent e) {
-            if (e.getSource() == btnSend || e.getSource() == txtInput) {
-                String msg = txtInput.getText().trim();
-                if (msg.isEmpty())
-                    return;
-
-                String fullMsg = String.format("[%s] %s", UserName, msg);
-                SendMessage(fullMsg);
-                txtInput.setText("");
-                txtInput.requestFocus();
-
-                if (msg.contains("/exit")) {
-                    System.exit(0);
-                }
-            }
-        }
-
-    }
-
+    /**
+     * 플레이어 선택 시 행동 수행
+     *
+     * @param targetPlayer 선택된 플레이어 이름
+     */
     private void performActionOnPlayer(String targetPlayer) {
         if (isDead) {
             AppendText("사망한 플레이어는 행동할 수 없습니다.\n");
@@ -486,73 +474,188 @@ public class MafiaGameClientView extends JFrame {
             return;
         }
 
-        // Remove [DEAD] prefix if exists
+        // [DEAD] 접두사 제거
         if (targetPlayer.startsWith("[DEAD]")) {
             targetPlayer = targetPlayer.substring(6);
         }
 
         if (currentPhase.equals("NIGHT")) {
-            String action = "";
-            if (myRole.equals("MAFIA")) {
-                action = "NIGHT_ACTION:MAFIA:" + targetPlayer;
-                AppendText("선택: [" + targetPlayer + "] 제거\n");
-            } else if (myRole.equals("SPY")) {
-                action = "NIGHT_ACTION:SPY:" + targetPlayer;
-                AppendText("선택: [" + targetPlayer + "] 역할 조사\n");
-            } else if (myRole.equals("DOCTOR")) {
-                action = "NIGHT_ACTION:DOCTOR:" + targetPlayer;
-                AppendText("선택: [" + targetPlayer + "] 보호\n");
-            } else if (myRole.equals("POLICE")) {
-                action = "NIGHT_ACTION:POLICE:" + targetPlayer;
-                AppendText("선택: [" + targetPlayer + "] 조사\n");
-            } else if (myRole.equals("SHAMAN")) {
-                action = "NIGHT_ACTION:SHAMAN:" + targetPlayer;
-                AppendText("선택: [" + targetPlayer + "] 축복\n");
-            } else if (myRole.equals("REPORTER")) {
-                action = "NIGHT_ACTION:REPORTER:" + targetPlayer;
-                AppendText("선택: [" + targetPlayer + "] 취재\n");
-            } else if (myRole.equals("GANGSTER")) {
-                action = "NIGHT_ACTION:GANGSTER:" + targetPlayer;
-                AppendText("선택: [" + targetPlayer + "] 투표 금지\n");
-            } else if (myRole.equals("PRIEST")) {
-                action = "NIGHT_ACTION:PRIEST:" + targetPlayer;
-                AppendText("선택: [" + targetPlayer + "] 부활\n");
-            }
-            if (!action.isEmpty()) {
-                SendMessage(action);
-            }
+            performNightAction(targetPlayer);
         } else if (currentPhase.equals("VOTE")) {
-            SendMessage("VOTE:" + targetPlayer);
-            AppendText("투표: [" + targetPlayer + "]\n");
+            performVote(targetPlayer);
         }
     }
 
+    /**
+     * 밤 행동 수행
+     *
+     * @param target 대상 플레이어
+     */
+    private void performNightAction(String target) {
+        String action = "";
+
+        switch (myRole) {
+            case "MAFIA":
+                action = "NIGHT_ACTION:MAFIA:" + target;
+                AppendText("선택: [" + target + "] 제거\n");
+                break;
+            case "SPY":
+                action = "NIGHT_ACTION:SPY:" + target;
+                AppendText("선택: [" + target + "] 역할 조사\n");
+                break;
+            case "DOCTOR":
+                action = "NIGHT_ACTION:DOCTOR:" + target;
+                AppendText("선택: [" + target + "] 보호\n");
+                break;
+            case "POLICE":
+                action = "NIGHT_ACTION:POLICE:" + target;
+                AppendText("선택: [" + target + "] 조사\n");
+                break;
+            case "SHAMAN":
+                action = "NIGHT_ACTION:SHAMAN:" + target;
+                AppendText("선택: [" + target + "] 축복\n");
+                break;
+            case "REPORTER":
+                action = "NIGHT_ACTION:REPORTER:" + target;
+                AppendText("선택: [" + target + "] 취재\n");
+                break;
+            case "GANGSTER":
+                action = "NIGHT_ACTION:GANGSTER:" + target;
+                AppendText("선택: [" + target + "] 투표 금지\n");
+                break;
+            case "PRIEST":
+                action = "NIGHT_ACTION:PRIEST:" + target;
+                AppendText("선택: [" + target + "] 부활\n");
+                break;
+        }
+
+        if (!action.isEmpty()) {
+            SendMessage(action);
+        }
+    }
+
+    /**
+     * 투표 수행
+     *
+     * @param target 대상 플레이어
+     */
+    private void performVote(String target) {
+        SendMessage("VOTE:" + target);
+        AppendText("투표: [" + target + "]\n");
+    }
+
+    /**
+     * 페이즈 표시 업데이트
+     *
+     * @param phase 현재 페이즈
+     */
     private void updatePhaseDisplay(String phase) {
+        // FINAL_DEFENSE:플레이어명 형식 처리
+        if (phase.startsWith("FINAL_DEFENSE:")) {
+            String[] parts = phase.split(":");
+            String targetPlayer = parts.length > 1 ? parts[1] : "";
+            lblPhaseInfo.setText("최후의 반론 - " + targetPlayer);
+            lblPhaseInfo.setForeground(new Color(255, 165, 0));
+            hideAgreeDisagreeButtons();
+            return;
+        }
+
         switch (phase) {
             case "WAITING":
                 lblPhaseInfo.setText("게임 시작 대기 중...");
                 lblPhaseInfo.setForeground(new Color(200, 200, 200));
+                hideAgreeDisagreeButtons();
                 break;
             case "NIGHT":
                 lblPhaseInfo.setText("밤 - 능력을 사용하세요");
                 lblPhaseInfo.setForeground(new Color(100, 100, 255));
+                hideAgreeDisagreeButtons();
                 break;
             case "DAY":
                 lblPhaseInfo.setText("낮 - 토론 시간");
                 lblPhaseInfo.setForeground(new Color(255, 200, 100));
+                hideAgreeDisagreeButtons();
                 break;
             case "VOTE":
                 lblPhaseInfo.setText("투표 시간");
                 lblPhaseInfo.setForeground(new Color(255, 100, 100));
+                hideAgreeDisagreeButtons();
+                break;
+            case "AGREE_DISAGREE":
+                lblPhaseInfo.setText("찬반 투표");
+                lblPhaseInfo.setForeground(new Color(220, 20, 60));
+                showAgreeDisagreeButtons();
                 break;
             default:
                 lblPhaseInfo.setText(phase);
                 lblPhaseInfo.setForeground(Color.WHITE);
+                hideAgreeDisagreeButtons();
         }
     }
 
+    /**
+     * 찬반 투표 버튼 표시
+     */
+    private void showAgreeDisagreeButtons() {
+        if (agreeDisagreePanel == null) {
+            // 패널 생성
+            agreeDisagreePanel = new JPanel();
+            agreeDisagreePanel.setBackground(new Color(35, 35, 35));
+            agreeDisagreePanel.setBounds(150, 500, 240, 60);
+            agreeDisagreePanel.setLayout(null);
+            contentPane.add(agreeDisagreePanel);
+            contentPane.setComponentZOrder(agreeDisagreePanel, 0);
+
+            // 찬성 버튼
+            btnAgree = new JButton("찬성");
+            btnAgree.setFont(new Font("맑은 고딕", Font.BOLD, 16));
+            btnAgree.setBackground(new Color(34, 139, 34));
+            btnAgree.setForeground(Color.WHITE);
+            btnAgree.setBorderPainted(false);
+            btnAgree.setFocusPainted(false);
+            btnAgree.setBounds(10, 10, 100, 40);
+            btnAgree.addActionListener(e -> {
+                SendMessage("AGREE_DISAGREE:AGREE");
+                hideAgreeDisagreeButtons();
+            });
+            agreeDisagreePanel.add(btnAgree);
+
+            // 반대 버튼
+            btnDisagree = new JButton("반대");
+            btnDisagree.setFont(new Font("맑은 고딕", Font.BOLD, 16));
+            btnDisagree.setBackground(new Color(178, 34, 34));
+            btnDisagree.setForeground(Color.WHITE);
+            btnDisagree.setBorderPainted(false);
+            btnDisagree.setFocusPainted(false);
+            btnDisagree.setBounds(130, 10, 100, 40);
+            btnDisagree.addActionListener(e -> {
+                SendMessage("AGREE_DISAGREE:DISAGREE");
+                hideAgreeDisagreeButtons();
+            });
+            agreeDisagreePanel.add(btnDisagree);
+        }
+
+        agreeDisagreePanel.setVisible(true);
+        contentPane.repaint();
+    }
+
+    /**
+     * 찬반 투표 버튼 숨기기
+     */
+    private void hideAgreeDisagreeButtons() {
+        if (agreeDisagreePanel != null) {
+            agreeDisagreePanel.setVisible(false);
+            contentPane.repaint();
+        }
+    }
+
+    /**
+     * 플레이어 카드 업데이트
+     *
+     * @param players 플레이어 목록 문자열
+     */
     private void updatePlayerCards(String players) {
-        // Clear all cards first
+        // 모든 카드 초기화
         for (PlayerCard card : playerCards) {
             card.clearPlayer();
         }
@@ -569,7 +672,7 @@ public class MafiaGameClientView extends JFrame {
                     boolean isDead = playerInfo.startsWith("[DEAD]");
                     String playerName = isDead ? playerInfo.substring(6) : playerInfo;
 
-                    // For now, we don't know other players' roles, so use default
+                    // 다른 플레이어의 역할은 알 수 없으므로 DEFAULT 사용
                     String displayRole = playerName.equals(UserName) ? myRole : "DEFAULT";
 
                     playerCards[i].setPlayer(playerName, displayRole, !isDead);
@@ -583,12 +686,20 @@ public class MafiaGameClientView extends JFrame {
         }
     }
 
+    /**
+     * 역할 표시 이름 반환
+     *
+     * @param role 역할 코드
+     * @return 한글 역할 이름
+     */
     private String getRoleDisplayName(String role) {
         switch (role) {
             case "MAFIA":
                 return "마피아";
             case "MADAME":
                 return "마담";
+            case "GHOUL":
+                return "도굴꾼";
             case "SPY":
                 return "스파이";
             case "DOCTOR":
@@ -614,39 +725,64 @@ public class MafiaGameClientView extends JFrame {
         }
     }
 
+    // ========================================
+    // 네트워크 관련 메소드
+    // ========================================
+
+    /**
+     * 채팅 메시지 추가
+     *
+     * @param msg 메시지
+     */
     public void AppendText(String msg) {
         textArea.append(msg);
         textArea.setCaretPosition(textArea.getText().length());
     }
 
+    /**
+     * 서버로 메시지 전송
+     *
+     * @param msg 전송할 메시지
+     */
     public void SendMessage(String msg) {
         try {
             dos.writeUTF(msg);
         } catch (IOException e) {
             AppendText("메시지 전송 실패.\n");
-            try {
-                dos.close();
-                dis.close();
-                socket.close();
-            } catch (IOException e1) {
-                e1.printStackTrace();
-                System.exit(0);
-            }
+            closeConnection();
         }
     }
 
-    // Play sound from server command
+    /**
+     * 연결 종료
+     */
+    private void closeConnection() {
+        try {
+            dos.close();
+            dis.close();
+            socket.close();
+        } catch (IOException e1) {
+            e1.printStackTrace();
+            System.exit(0);
+        }
+    }
+
+    // ========================================
+    // 사운드 관련 메소드
+    // ========================================
+
+    /**
+     * 서버로부터 받은 사운드 재생
+     *
+     * @param filePath 사운드 파일 경로
+     */
     private void playServerSound(String filePath) {
         if (filePath == null || filePath.isEmpty()) {
             return;
         }
 
-        // Stop previous sound
-        if (currentClip != null && currentClip.isRunning()) {
-            currentClip.stop();
-            currentClip.close();
-            currentClip = null;
-        }
+        // 이전 사운드 중지
+        stopCurrentSound();
 
         new Thread(() -> {
             try {
@@ -663,7 +799,7 @@ public class MafiaGameClientView extends JFrame {
 
                 System.out.println("Playing sound: " + filePath);
 
-                // Wait for the clip to finish
+                // 사운드 종료 리스너
                 currentClip.addLineListener(event -> {
                     if (event.getType() == LineEvent.Type.STOP) {
                         currentClip.close();
@@ -682,12 +818,485 @@ public class MafiaGameClientView extends JFrame {
         }).start();
     }
 
-    // Helper class
+    /**
+     * 현재 사운드 중지
+     */
+    private void stopCurrentSound() {
+        if (currentClip != null && currentClip.isRunning()) {
+            currentClip.stop();
+            currentClip.close();
+            currentClip = null;
+        }
+    }
+
+    // ========================================
+    // 내부 클래스 - 플레이어 카드
+    // ========================================
+
+    /**
+     * 개별 플레이어를 표시하는 카드 컴포넌트
+     */
+    class PlayerCard extends JPanel {
+        /**
+         * 카드 인덱스
+         */
+        private int index;
+
+        /**
+         * 이미지 레이블
+         */
+        private JLabel imageLabel;
+
+        /**
+         * 이름 레이블
+         */
+        private JLabel nameLabel;
+
+        /**
+         * 상태 아이콘 레이블
+         */
+        private JLabel statusIcon;
+
+        /**
+         * 플레이어 이름
+         */
+        private String playerName;
+
+        /**
+         * 역할
+         */
+        private String role;
+
+        /**
+         * 생존 여부
+         */
+        private boolean isAlive = true;
+
+        /**
+         * 빈 카드 여부
+         */
+        private boolean isEmpty = true;
+
+        /**
+         * 역할 이미지
+         */
+        private Image roleImage;
+
+        /**
+         * 플레이어 카드 생성자
+         *
+         * @param index 카드 인덱스
+         */
+        public PlayerCard(int index) {
+            this.index = index;
+            initializeCard();
+            setupMouseListener();
+        }
+
+        /**
+         * 카드 초기화
+         */
+        private void initializeCard() {
+            setLayout(null);
+            setBackground(new Color(45, 45, 45));
+            setBorder(new LineBorder(new Color(70, 70, 70), 2));
+            setCursor(new Cursor(Cursor.HAND_CURSOR));
+
+            // 이미지 영역
+            imageLabel = new JLabel();
+            imageLabel.setBounds(5, 5, 130, 180);
+            imageLabel.setHorizontalAlignment(SwingConstants.CENTER);
+            imageLabel.setVerticalAlignment(SwingConstants.CENTER);
+            add(imageLabel);
+
+            // 상태 아이콘 (우측 상단)
+            statusIcon = new JLabel();
+            statusIcon.setBounds(110, 10, 25, 25);
+            statusIcon.setFont(new Font("Arial", Font.BOLD, 20));
+            add(statusIcon);
+
+            // 이름 레이블
+            nameLabel = new JLabel("", SwingConstants.CENTER);
+            nameLabel.setFont(new Font("맑은 고딕", Font.BOLD, 12));
+            nameLabel.setForeground(Color.WHITE);
+            nameLabel.setBounds(5, 190, 130, 25);
+            add(nameLabel);
+
+            // 빈 상태 표시
+            showEmptyState();
+        }
+
+        /**
+         * 마우스 리스너 설정
+         */
+        private void setupMouseListener() {
+            addMouseListener(new MouseAdapter() {
+                @Override
+                public void mouseClicked(MouseEvent e) {
+                    // 영매와 성직자는 죽은 사람도 선택 가능
+                    boolean canSelectDead = myRole.equals("SHAMAN") || myRole.equals("PRIEST");
+                    boolean canClick = !isEmpty && (isAlive || canSelectDead);
+
+                    if (canClick) {
+                        handleCardClick();
+                    }
+                }
+
+                @Override
+                public void mouseEntered(MouseEvent e) {
+                    // 영매와 성직자는 죽은 사람도 선택 가능
+                    boolean canSelectDead = myRole.equals("SHAMAN") || myRole.equals("PRIEST");
+                    boolean canHover = !isEmpty && (isAlive || canSelectDead);
+
+                    if (canHover) {
+                        setBorder(new LineBorder(new Color(100, 150, 200), 3));
+                    }
+                }
+
+                @Override
+                public void mouseExited(MouseEvent e) {
+                    if (selectedCard != PlayerCard.this) {
+                        setBorder(new LineBorder(new Color(70, 70, 70), 2));
+                    }
+                }
+            });
+        }
+
+        /**
+         * 카드 클릭 처리
+         */
+        private void handleCardClick() {
+            if (currentPhase.equals("NIGHT") || currentPhase.equals("VOTE")) {
+                // 이전 카드 선택 해제
+                if (selectedCard != null && selectedCard != this) {
+                    selectedCard.setBorder(new LineBorder(new Color(70, 70, 70), 2));
+                }
+
+                // 현재 카드 선택
+                selectedCard = this;
+                setBorder(new LineBorder(new Color(255, 215, 0), 3));
+
+                // 행동 수행
+                performActionOnPlayer(playerName);
+            }
+        }
+
+        /**
+         * 플레이어 이름 반환
+         *
+         * @return 플레이어 이름
+         */
+        public String getPlayerName() {
+            return playerName;
+        }
+
+        /**
+         * 플레이어 설정
+         *
+         * @param name 이름
+         * @param role 역할
+         * @param alive 생존 여부
+         */
+        public void setPlayer(String name, String role, boolean alive) {
+            this.playerName = name;
+            this.role = role;
+            this.isAlive = alive;
+            this.isEmpty = false;
+
+            nameLabel.setText(name);
+
+            // 역할 이미지 로드
+            loadRoleImage(role);
+
+            // 상태 업데이트
+            if (!alive) {
+                statusIcon.setText("💀");
+                statusIcon.setForeground(Color.RED);
+                setBackground(new Color(60, 40, 40));
+                applyGrayscale();
+            } else {
+                statusIcon.setText("");
+                setBackground(new Color(45, 45, 45));
+            }
+        }
+
+        /**
+         * 플레이어 제거
+         */
+        public void clearPlayer() {
+            this.isEmpty = true;
+            this.playerName = null;
+            this.role = null;
+            this.isAlive = true;
+            showEmptyState();
+        }
+
+        /**
+         * 빈 상태 표시
+         */
+        private void showEmptyState() {
+            nameLabel.setText("");
+            statusIcon.setText("");
+            imageLabel.setIcon(null);
+            imageLabel.setText("+");
+            imageLabel.setFont(new Font("Arial", Font.PLAIN, 48));
+            imageLabel.setForeground(new Color(100, 100, 100));
+            setBackground(new Color(40, 40, 40));
+            setBorder(new LineBorder(new Color(60, 60, 60), 2, true));
+        }
+
+        /**
+         * 역할 이미지 로드
+         *
+         * @param role 역할
+         */
+        private void loadRoleImage(String role) {
+            try {
+                String imageName = roleImageMap.getOrDefault(role, "default.png");
+                String imagePath = "/info/" + imageName;
+
+                InputStream imgStream = getClass().getResourceAsStream(imagePath);
+                if (imgStream != null) {
+                    BufferedImage img = ImageIO.read(imgStream);
+                    Image scaledImg = img.getScaledInstance(130, 180, Image.SCALE_SMOOTH);
+                    roleImage = scaledImg;
+                    imageLabel.setIcon(new ImageIcon(scaledImg));
+                    imageLabel.setText("");
+                    imgStream.close();
+                } else {
+                    imageLabel.setText("?");
+                    imageLabel.setFont(new Font("Arial", Font.BOLD, 48));
+                    imageLabel.setForeground(Color.GRAY);
+                }
+            } catch (IOException e) {
+                imageLabel.setText("?");
+                imageLabel.setFont(new Font("Arial", Font.BOLD, 48));
+                imageLabel.setForeground(Color.GRAY);
+            }
+        }
+
+        /**
+         * 그레이스케일 효과 적용 (사망 시)
+         */
+        private void applyGrayscale() {
+            if (roleImage != null) {
+                BufferedImage buffered = new BufferedImage(
+                        roleImage.getWidth(null),
+                        roleImage.getHeight(null),
+                        BufferedImage.TYPE_INT_ARGB);
+
+                Graphics2D g2d = buffered.createGraphics();
+                g2d.drawImage(roleImage, 0, 0, null);
+                g2d.dispose();
+
+                // 그레이스케일 변환
+                for (int y = 0; y < buffered.getHeight(); y++) {
+                    for (int x = 0; x < buffered.getWidth(); x++) {
+                        int rgb = buffered.getRGB(x, y);
+                        int alpha = (rgb >> 24) & 0xff;
+                        int r = (rgb >> 16) & 0xff;
+                        int g = (rgb >> 8) & 0xff;
+                        int b = rgb & 0xff;
+
+                        int gray = (r + g + b) / 3;
+                        gray = (int) (gray * 0.5); // 어둡게
+
+                        int newRgb = (alpha << 24) | (gray << 16) | (gray << 8) | gray;
+                        buffered.setRGB(x, y, newRgb);
+                    }
+                }
+
+                imageLabel.setIcon(new ImageIcon(buffered));
+            }
+        }
+    }
+
+    // ========================================
+    // 내부 클래스 - 네트워크 리스너
+    // ========================================
+
+    /**
+     * 서버로부터 메시지를 수신하는 스레드
+     */
+    class ListenNetwork extends Thread {
+        /**
+         * 스레드 실행
+         * 서버로부터 메시지를 지속적으로 수신합니다.
+         */
+        public void run() {
+            while (true) {
+                try {
+                    String msg = dis.readUTF();
+
+                    // 메시지 타입별 처리
+                    if (msg.startsWith("ROLE:")) {
+                        handleRoleMessage(msg);
+                    } else if (msg.startsWith("PHASE:")) {
+                        handlePhaseMessage(msg);
+                    } else if (msg.startsWith("PLAYERS:")) {
+                        handlePlayersMessage(msg);
+                    } else if (msg.startsWith("DEAD:")) {
+                        handleDeadMessage(msg);
+                    } else if (msg.startsWith("SOUND:")) {
+                        handleSoundMessage(msg);
+                    } else if (msg.startsWith("REVEAL:")) {
+                        handleRevealMessage(msg);
+                    } else {
+                        AppendText(msg);
+                    }
+
+                } catch (IOException e) {
+                    AppendText("연결이 끊어졌습니다!\n");
+                    closeConnection();
+                    break;
+                }
+            }
+        }
+
+        /**
+         * 역할 메시지 처리
+         *
+         * @param msg 메시지
+         */
+        private void handleRoleMessage(String msg) {
+            String role = msg.substring(5).trim();
+            myRole = role;
+            AppendText("당신의 역할: " + getRoleDisplayName(role) + "\n");
+        }
+
+        /**
+         * 페이즈 메시지 처리
+         *
+         * @param msg 메시지
+         */
+        private void handlePhaseMessage(String msg) {
+            String phase = msg.substring(6).trim();
+            currentPhase = phase;
+            updatePhaseDisplay(phase);
+        }
+
+        /**
+         * 플레이어 목록 메시지 처리
+         *
+         * @param msg 메시지
+         */
+        private void handlePlayersMessage(String msg) {
+            String players = msg.substring(8).trim();
+            updatePlayerCards(players);
+        }
+
+        /**
+         * 사망 메시지 처리
+         *
+         * @param msg 메시지
+         */
+        private void handleDeadMessage(String msg) {
+            String status = msg.substring(5).trim();
+            if (status.equals("true")) {
+                isDead = true;
+                AppendText("=== 당신은 사망했습니다. ===\n");
+            } else if (status.equals("false")) {
+                isDead = false;
+                AppendText("=== 부활했습니다! ===\n");
+            }
+        }
+
+        /**
+         * 사운드 메시지 처리
+         *
+         * @param msg 메시지
+         */
+        private void handleSoundMessage(String msg) {
+            String soundPath = msg.substring(6).trim();
+            playServerSound(soundPath);
+        }
+
+        /**
+         * REVEAL 메시지 처리 (접선 시 상대방 역할 이미지 표시)
+         * 형식: REVEAL:플레이어이름:역할
+         *
+         * @param msg 메시지
+         */
+        private void handleRevealMessage(String msg) {
+            // REVEAL:이름:역할
+            String[] parts = msg.substring(7).split(":");
+            if (parts.length == 2) {
+                String playerName = parts[0];
+                String role = parts[1];
+
+                // 해당 플레이어 카드 찾아서 이미지 업데이트
+                for (PlayerCard card : playerCards) {
+                    if (playerName.equals(card.getPlayerName())) {
+                        card.setPlayer(playerName, role, true);
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    // ========================================
+    // 내부 클래스 - 액션 리스너
+    // ========================================
+
+    /**
+     * 채팅 입력 및 전송 버튼 액션 리스너
+     */
+    class Myaction implements ActionListener {
+        /**
+         * 액션 이벤트 처리
+         *
+         * @param e 액션 이벤트
+         */
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            if (e.getSource() == btnSend || e.getSource() == txtInput) {
+                String msg = txtInput.getText().trim();
+                if (msg.isEmpty())
+                    return;
+
+                String fullMsg = String.format("[%s] %s", UserName, msg);
+                SendMessage(fullMsg);
+                txtInput.setText("");
+                txtInput.requestFocus();
+
+                if (msg.contains("/exit")) {
+                    System.exit(0);
+                }
+            }
+        }
+    }
+
+    // ========================================
+    // 내부 클래스 - 플레이어 정보
+    // ========================================
+
+    /**
+     * 플레이어 정보를 저장하는 헬퍼 클래스
+     */
     class PlayerInfo {
+        /**
+         * 플레이어 이름
+         */
         String name;
+
+        /**
+         * 역할
+         */
         String role;
+
+        /**
+         * 생존 여부
+         */
         boolean alive;
 
+        /**
+         * 플레이어 정보 생성자
+         *
+         * @param name 이름
+         * @param role 역할
+         * @param alive 생존 여부
+         */
         PlayerInfo(String name, String role, boolean alive) {
             this.name = name;
             this.role = role;
