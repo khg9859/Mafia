@@ -203,8 +203,8 @@ public class MafiaGameClientView extends JFrame {
      * 서버에 연결하고 UI를 초기화합니다.
      *
      * @param username 사용자 이름
-     * @param ip_addr 서버 IP 주소
-     * @param port_no 서버 포트 번호
+     * @param ip_addr  서버 IP 주소
+     * @param port_no  서버 포트 번호
      */
     public MafiaGameClientView(String username, String ip_addr, String port_no) {
         // 초기화
@@ -274,8 +274,8 @@ public class MafiaGameClientView extends JFrame {
      * 서버에 연결
      *
      * @param username 사용자 이름
-     * @param ip_addr 서버 IP 주소
-     * @param port_no 서버 포트 번호
+     * @param ip_addr  서버 IP 주소
+     * @param port_no  서버 포트 번호
      */
     private void connectToServer(String username, String ip_addr, String port_no) {
         AppendText("Connecting to " + ip_addr + ":" + port_no + "...\n");
@@ -993,8 +993,8 @@ public class MafiaGameClientView extends JFrame {
         /**
          * 플레이어 설정
          *
-         * @param name 이름
-         * @param role 역할
+         * @param name  이름
+         * @param role  역할
          * @param alive 생존 여부
          */
         public void setPlayer(String name, String role, boolean alive) {
@@ -1222,7 +1222,7 @@ public class MafiaGameClientView extends JFrame {
             String[] parts = msg.substring(7).split(":");
             if (parts.length == 2) {
                 String playerName = parts[0];
-                String role = parts[1];
+                String role = parts[1].trim();
 
                 // 해당 플레이어 카드 찾아서 이미지 업데이트
                 for (PlayerCard card : playerCards) {
@@ -1293,8 +1293,8 @@ public class MafiaGameClientView extends JFrame {
         /**
          * 플레이어 정보 생성자
          *
-         * @param name 이름
-         * @param role 역할
+         * @param name  이름
+         * @param role  역할
          * @param alive 생존 여부
          */
         PlayerInfo(String name, String role, boolean alive) {
