@@ -105,6 +105,11 @@ public class MafiaGameServer extends JFrame {
      */
     private JButton btnGameStart;
 
+    /**
+     * 서버 상태 표시 레이블
+     */
+    private JLabel statusLabel;
+
     // ========================================
     // 네트워크 관련 변수
     // ========================================
@@ -399,7 +404,7 @@ public class MafiaGameServer extends JFrame {
         headerPanel.add(titleLabel, java.awt.BorderLayout.WEST);
 
         // 상태 레이블
-        JLabel statusLabel = new JLabel("● Offline");
+        statusLabel = new JLabel("● Offline");
         statusLabel.setFont(new java.awt.Font("SansSerif", java.awt.Font.PLAIN, 14));
         statusLabel.setForeground(new java.awt.Color(255, 0, 0));
         headerPanel.add(statusLabel, java.awt.BorderLayout.EAST);
@@ -583,6 +588,10 @@ public class MafiaGameServer extends JFrame {
         btnServerStart.setBackground(new java.awt.Color(39, 174, 96));
         txtPortNumber.setEnabled(false);
         btnGameStart.setEnabled(true);
+
+        // 서버 상태를 Online으로 변경
+        statusLabel.setText("● Online");
+        statusLabel.setForeground(new java.awt.Color(0, 255, 0));
 
         // 클라이언트 수락 스레드 시작
         AcceptServer accept_server = new AcceptServer();
@@ -1708,6 +1717,16 @@ public class MafiaGameServer extends JFrame {
         WriteAll("SYSTEM: [" + finalDefensePlayer + "]님의 처형에 찬성/반대 투표를 진행합니다. (5초)\n");
         WriteAll("SYSTEM: 아무것도 선택하지 않으면 자동으로 반대로 처리됩니다.\n");
 
+        // 마담의 유혹을 받은 대상에게만 알림
+        if (seduced.containsKey(finalDefensePlayer) && seduced.get(finalDefensePlayer)) {
+            for (UserService user : UserVec) {
+                if (user.UserName.equals(finalDefensePlayer)) {
+                    user.WriteOne("SYSTEM: 마담의 유혹을 받았습니다. 말을 할 수 없습니다.\n");
+                    break;
+                }
+            }
+        }
+
         // 5초 후 찬반 투표 결과 처리
         new Thread(() -> {
             try {
@@ -2272,9 +2291,7 @@ public class MafiaGameServer extends JFrame {
                 case "PRIEST":
                     handlePriestAction(target);
                     break;
-                case "MADAME":
-                    handleMadameAction(target);
-                    break;
+                // MADAME은 투표로만 능력 사용 (밤 행동 없음)
             }
         }
 
@@ -2340,10 +2357,17 @@ public class MafiaGameServer extends JFrame {
 
             for (UserService targetUser : UserVec) {
                 if (targetUser.UserName.equals(target)) {
-                    String result = targetUser.role.equals("MAFIA") || targetUser.role.equals("SPY")
-                            ? "마피아입니다!"
-                            : "마피아가 아닙니다.";
+                    String targetRole = targetUser.role;
+                    boolean isMafia = targetRole.equals("MAFIA") || targetRole.equals("SPY");
+                    String result = isMafia ? "마피아입니다!" : "마피아가 아닙니다.";
+
                     WriteOne("SYSTEM: [" + target + "]님은 " + result + "\n");
+
+                    // 마피아인 경우 이미지 전송
+                    if (isMafia) {
+                        WriteOne("REVEAL:" + target + ":" + targetRole);
+                    }
+
                     AppendText("경찰 " + UserName + "이 " + target + " 조사 -> " + result);
                     policeUsedThisNight = true;
                     break;
@@ -2370,6 +2394,10 @@ public class MafiaGameServer extends JFrame {
             for (UserService targetUser : UserVec) {
                 if (targetUser.UserName.equals(target)) {
                     String targetRole = targetUser.role;
+
+                    // 스파이 조사 사운드 재생
+                    WriteOne("SOUND:/GameSound/simin/police_choose.wav");
+
                     WriteOne("SYSTEM: [" + target + "]님의 직업은 [" + targetRole + "]입니다!\n");
                     AppendText("스파이 " + UserName + "이 " + target + " 조사 -> " + targetRole);
 
@@ -2546,36 +2574,6 @@ public class MafiaGameServer extends JFrame {
         }
 
         /**
-         * 마담 행동 처리 (유혹)
-         *
-         * @param target 대상
-         */
-        private void handleMadameAction(String target) {
-            // 대상이 마피아인지 확인 (접선 시도)
-            for (UserService targetUser : UserVec) {
-                if (targetUser.UserName.equals(target)) {
-                    if (targetUser.role.equals("MAFIA") && !madameContactedMafia) {
-                        handleMadameMafiaContact(targetUser);
-                        return;
-                    }
-                    break;
-                }
-            }
-
-            // 유혹 능력 사용
-            WriteOne("SYSTEM: [" + target + "]님을 유혹했습니다. 다음 밤에 능력을 사용하지 못합니다!\n");
-            AppendText("마담 " + UserName + "이 " + target + " 유혹 -> 다음 밤 능력 사용 불가");
-
-            // 타겟에게 유혹 메시지 전송
-            for (UserService targetUser : UserVec) {
-                if (targetUser.UserName.equals(target)) {
-                    targetUser.WriteOne("SYSTEM: 마담에게 유혹당했습니다! 다음 밤 능력을 사용할 수 없습니다.\n");
-                    break;
-                }
-            }
-        }
-
-        /**
          * 투표 처리
          *
          * @param msg 메시지
@@ -2622,31 +2620,19 @@ public class MafiaGameServer extends JFrame {
                 AppendText(UserName + "(" + role + ") -> " + target + " 투표 (" + votes + "표)");
                 WriteOne("SYSTEM: [" + target + "]님에게 투표했습니다." + (votes == 2 ? " (2표)" : "") + "\n");
 
-                // 마담의 유혹 능력
+                // 마담의 유혹 능력 (투표 시 대상 유혹 -> 찬반투표 때 알림)
                 if (role.equals("MADAME")) {
-                    handleMadameSeduction(target);
-                }
-            }
-        }
+                    seduced.put(target, true);
 
-        /**
-         * 마담 유혹 처리
-         *
-         * @param target 대상
-         */
-        private void handleMadameSeduction(String target) {
-            seduced.put(target, true);
-            AppendText("마담 " + UserName + "이 " + target + " 유혹 -> 밤 능력 사용 불가");
-
-            for (UserService targetUser : UserVec) {
-                if (targetUser.UserName.equals(target)) {
-                    // 마피아 접선
-                    if (targetUser.role.equals("MAFIA")) {
-                        handleMadameMafiaContact(targetUser);
-                    } else {
-                        targetUser.WriteOne("SYSTEM: 마담에게 유혹당했습니다! 밤에 능력을 사용할 수 없습니다.\n");
+                    // 마피아 자동 접선 처리
+                    for (UserService targetUser : UserVec) {
+                        if (targetUser.UserName.equals(target)) {
+                            if (targetUser.role.equals("MAFIA") && !madameContactedMafia) {
+                                handleMadameMafiaContact(targetUser);
+                            }
+                            break;
+                        }
                     }
-                    break;
                 }
             }
         }
@@ -2707,9 +2693,14 @@ public class MafiaGameServer extends JFrame {
             if (aliveStatus.get(UserName) != null && !aliveStatus.get(UserName)) {
                 handleDeadChat(msg);
             }
-            // 최후의 반론 대상자만 채팅 가능
+            // 최후의 반론 대상자만 채팅 가능 (단, 마담의 유혹을 받은 경우 제외)
             else if (UserName.equals(finalDefensePlayer)) {
-                WriteAll(msg + "\n");
+                // 마담의 유혹을 받은 경우 말할 수 없음
+                if (seduced.containsKey(UserName) && seduced.get(UserName)) {
+                    WriteOne("SYSTEM: 마담의 유혹을 받아 말을 할 수 없습니다.\n");
+                } else {
+                    WriteAll(msg + "\n");
+                }
             }
             // 다른 플레이어는 채팅 불가
             else {

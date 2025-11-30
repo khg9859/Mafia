@@ -527,6 +527,7 @@ public class MafiaGameClientView extends JFrame {
                 action = "NIGHT_ACTION:PRIEST:" + target;
                 AppendText("선택: [" + target + "] 부활\n");
                 break;
+            // MADAME은 투표로만 능력 사용 (밤 행동 없음)
         }
 
         if (!action.isEmpty()) {
@@ -594,49 +595,239 @@ public class MafiaGameClientView extends JFrame {
     }
 
     /**
-     * 찬반 투표 버튼 표시
+     * 찬반 투표 버튼 표시 (고급 애니메이션 디자인)
      */
     private void showAgreeDisagreeButtons() {
         if (agreeDisagreePanel == null) {
-            // 패널 생성
-            agreeDisagreePanel = new JPanel();
-            agreeDisagreePanel.setBackground(new Color(35, 35, 35));
-            agreeDisagreePanel.setBounds(150, 500, 240, 60);
+            // 메인 패널 생성 (그라데이션 효과)
+            agreeDisagreePanel = new JPanel() {
+                @Override
+                protected void paintComponent(Graphics g) {
+                    super.paintComponent(g);
+                    Graphics2D g2d = (Graphics2D) g;
+                    g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+                    // 그라데이션 배경
+                    GradientPaint gradient = new GradientPaint(
+                        0, 0, new Color(45, 45, 45),
+                        0, getHeight(), new Color(30, 30, 30)
+                    );
+                    g2d.setPaint(gradient);
+                    g2d.fillRoundRect(0, 0, getWidth(), getHeight(), 20, 20);
+
+                    // 테두리 효과
+                    g2d.setColor(new Color(100, 100, 100, 150));
+                    g2d.setStroke(new BasicStroke(2));
+                    g2d.drawRoundRect(1, 1, getWidth() - 2, getHeight() - 2, 20, 20);
+                }
+            };
+            agreeDisagreePanel.setOpaque(false);
+            agreeDisagreePanel.setBounds(100, 450, 360, 130);
             agreeDisagreePanel.setLayout(null);
             contentPane.add(agreeDisagreePanel);
             contentPane.setComponentZOrder(agreeDisagreePanel, 0);
 
-            // 찬성 버튼
-            btnAgree = new JButton("찬성");
-            btnAgree.setFont(new Font("맑은 고딕", Font.BOLD, 16));
-            btnAgree.setBackground(new Color(34, 139, 34));
-            btnAgree.setForeground(Color.WHITE);
-            btnAgree.setBorderPainted(false);
-            btnAgree.setFocusPainted(false);
-            btnAgree.setBounds(10, 10, 100, 40);
+            // 제목 레이블 (빛나는 효과)
+            JLabel titleLabel = new JLabel("⚖️ 처형 여부를 선택하세요 ⚖️", SwingConstants.CENTER);
+            titleLabel.setFont(new Font("맑은 고딕", Font.BOLD, 16));
+            titleLabel.setForeground(new Color(255, 215, 0));
+            titleLabel.setBounds(10, 15, 340, 30);
+
+            // 제목 그림자 효과
+            titleLabel.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(0, 0, 1, 0, new Color(255, 215, 0, 100)),
+                BorderFactory.createEmptyBorder(5, 0, 5, 0)
+            ));
+            agreeDisagreePanel.add(titleLabel);
+
+            // 찬성 버튼 (고급 디자인)
+            btnAgree = createStyledButton("✓ 찬성", new Color(46, 204, 113), new Color(39, 174, 96));
+            btnAgree.setBounds(30, 60, 145, 55);
             btnAgree.addActionListener(e -> {
-                SendMessage("AGREE_DISAGREE:AGREE");
-                hideAgreeDisagreeButtons();
+                animateButtonClick(btnAgree);
+                new Thread(() -> {
+                    try {
+                        Thread.sleep(200);
+                        SendMessage("AGREE_DISAGREE:AGREE");
+                        hideAgreeDisagreeButtons();
+                    } catch (InterruptedException ex) {
+                        ex.printStackTrace();
+                    }
+                }).start();
             });
             agreeDisagreePanel.add(btnAgree);
 
-            // 반대 버튼
-            btnDisagree = new JButton("반대");
-            btnDisagree.setFont(new Font("맑은 고딕", Font.BOLD, 16));
-            btnDisagree.setBackground(new Color(178, 34, 34));
-            btnDisagree.setForeground(Color.WHITE);
-            btnDisagree.setBorderPainted(false);
-            btnDisagree.setFocusPainted(false);
-            btnDisagree.setBounds(130, 10, 100, 40);
+            // 반대 버튼 (고급 디자인)
+            btnDisagree = createStyledButton("✗ 반대", new Color(231, 76, 60), new Color(192, 57, 43));
+            btnDisagree.setBounds(185, 60, 145, 55);
             btnDisagree.addActionListener(e -> {
-                SendMessage("AGREE_DISAGREE:DISAGREE");
-                hideAgreeDisagreeButtons();
+                animateButtonClick(btnDisagree);
+                new Thread(() -> {
+                    try {
+                        Thread.sleep(200);
+                        SendMessage("AGREE_DISAGREE:DISAGREE");
+                        hideAgreeDisagreeButtons();
+                    } catch (InterruptedException ex) {
+                        ex.printStackTrace();
+                    }
+                }).start();
             });
             agreeDisagreePanel.add(btnDisagree);
         }
 
+        // 페이드 인 애니메이션
         agreeDisagreePanel.setVisible(true);
-        contentPane.repaint();
+        fadeInPanel(agreeDisagreePanel);
+    }
+
+    /**
+     * 스타일이 적용된 버튼 생성
+     */
+    private JButton createStyledButton(String text, Color normalColor, Color hoverColor) {
+        JButton button = new JButton(text) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2d = (Graphics2D) g;
+                g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+                // 그라데이션 배경
+                GradientPaint gradient = new GradientPaint(
+                    0, 0, getBackground(),
+                    0, getHeight(), getBackground().darker()
+                );
+                g2d.setPaint(gradient);
+                g2d.fillRoundRect(0, 0, getWidth(), getHeight(), 15, 15);
+
+                // 하이라이트 효과
+                g2d.setColor(new Color(255, 255, 255, 30));
+                g2d.fillRoundRect(5, 5, getWidth() - 10, getHeight() / 2 - 5, 10, 10);
+
+                // 텍스트
+                g2d.setColor(getForeground());
+                g2d.setFont(getFont());
+                FontMetrics fm = g2d.getFontMetrics();
+                int textX = (getWidth() - fm.stringWidth(getText())) / 2;
+                int textY = (getHeight() + fm.getAscent() - fm.getDescent()) / 2;
+
+                // 텍스트 그림자
+                g2d.setColor(new Color(0, 0, 0, 100));
+                g2d.drawString(getText(), textX + 1, textY + 1);
+
+                // 실제 텍스트
+                g2d.setColor(getForeground());
+                g2d.drawString(getText(), textX, textY);
+            }
+        };
+
+        button.setFont(new Font("맑은 고딕", Font.BOLD, 20));
+        button.setBackground(normalColor);
+        button.setForeground(Color.WHITE);
+        button.setBorderPainted(false);
+        button.setFocusPainted(false);
+        button.setContentAreaFilled(false);
+        button.setCursor(new Cursor(Cursor.HAND_CURSOR));
+
+        // 호버 애니메이션
+        button.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                animateColorChange(button, button.getBackground(), hoverColor, 200);
+            }
+
+            @Override
+            public void mouseExited(MouseEvent e) {
+                animateColorChange(button, button.getBackground(), normalColor, 200);
+            }
+        });
+
+        return button;
+    }
+
+    /**
+     * 색상 변화 애니메이션
+     */
+    private void animateColorChange(JButton button, Color from, Color to, int duration) {
+        new Thread(() -> {
+            int steps = 20;
+            int delay = duration / steps;
+
+            for (int i = 0; i <= steps; i++) {
+                float ratio = (float) i / steps;
+                int r = (int) (from.getRed() + (to.getRed() - from.getRed()) * ratio);
+                int g = (int) (from.getGreen() + (to.getGreen() - from.getGreen()) * ratio);
+                int b = (int) (from.getBlue() + (to.getBlue() - from.getBlue()) * ratio);
+
+                Color newColor = new Color(r, g, b);
+                SwingUtilities.invokeLater(() -> {
+                    button.setBackground(newColor);
+                    button.repaint();
+                });
+
+                try {
+                    Thread.sleep(delay);
+                } catch (InterruptedException e) {
+                    break;
+                }
+            }
+        }).start();
+    }
+
+    /**
+     * 버튼 클릭 애니메이션
+     */
+    private void animateButtonClick(JButton button) {
+        new Thread(() -> {
+            try {
+                // 축소
+                for (int i = 0; i < 5; i++) {
+                    int offset = i * 2;
+                    int finalOffset = offset;
+                    SwingUtilities.invokeLater(() -> {
+                        button.setBounds(
+                            button.getX() + finalOffset,
+                            button.getY() + finalOffset,
+                            button.getWidth() - finalOffset * 2,
+                            button.getHeight() - finalOffset * 2
+                        );
+                    });
+                    Thread.sleep(20);
+                }
+
+                // 확대
+                for (int i = 5; i >= 0; i--) {
+                    int offset = i * 2;
+                    int finalOffset = offset;
+                    SwingUtilities.invokeLater(() -> {
+                        button.setBounds(
+                            button.getX() - finalOffset,
+                            button.getY() - finalOffset,
+                            button.getWidth() + finalOffset * 2,
+                            button.getHeight() + finalOffset * 2
+                        );
+                    });
+                    Thread.sleep(20);
+                }
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }).start();
+    }
+
+    /**
+     * 패널 페이드 인 애니메이션
+     */
+    private void fadeInPanel(JPanel panel) {
+        panel.setOpaque(false);
+        new Thread(() -> {
+            for (int i = 0; i <= 10; i++) {
+                try {
+                    Thread.sleep(30);
+                    panel.repaint();
+                } catch (InterruptedException e) {
+                    break;
+                }
+            }
+        }).start();
     }
 
     /**
