@@ -1,385 +1,377 @@
 # 마피아 게임 (Mafia Game)
 
-[![Build and Release](https://github.com/khg9859/Mafia/actions/workflows/build.yml/badge.svg)](https://github.com/khg9859/Mafia/actions/workflows/build.yml)
-
-## 📋 프로젝트 개요
-
 자바 소켓 프로그래밍 기반의 멀티플레이어 마피아 게임입니다.
-서버-클라이언트 구조로 여러 플레이어가 동시에 접속하여 마피아 게임을 즐길 수 있습니다.
 
-## 🚀 빠른 시작
+## ✨ 목차
+
+1. [빠른 시작](#-빠른-시작)
+2. [게임 방법](#-게임-방법)
+3. [역할 설명](#-역할-설명)
+4. [주요 기능](#-주요-기능)
+5. [프로젝트 구조](#-프로젝트-구조)
+6. [개발 가이드](#-개발-가이드)
+7. [기술 스택](#-기술-스택)
+
+---
+
+## ✨ 빠른 시작
 
 ### 필요 조건
 
-- **Java 17 이상** (JDK 17+)
-- **Maven 3.6 이상** (빌드용)
+- Java 17 이상
+- Maven 3.6 이상
 
-### Git Clone 방법
+### 설치 방법
 
 ```bash
-# HTTPS로 클론
+# 저장소 클론
 git clone https://github.com/khg9859/Mafia.git
 cd Mafia
 
-# 또는 SSH로 클론 (SSH 키 설정 필요)
-git clone git@github.com:khg9859/Mafia.git
-cd Mafia
-```
-
-### Maven 설치
-
-**macOS:**
-```bash
-# Homebrew로 Maven 설치
-brew install maven
-
-# Maven 버전 확인
-mvn --version
-```
-
-**Windows:**
-1. [Apache Maven 공식 사이트](https://maven.apache.org/download.cgi)에서 다운로드
-2. 환경 변수 설정 후 `mvn --version` 명령어로 확인
-
-**Linux:**
-```bash
-# Ubuntu/Debian
-sudo apt-get install maven
-
-# CentOS/RHEL
-sudo yum install maven
-```
-
-### 빌드 방법
-
-```bash
-# Maven으로 빌드
+# Maven 빌드
 mvn clean package
-
-# 빌드 결과 확인
-ls -lh target/
 ```
-
-빌드가 완료되면 `target/` 디렉토리에 다음 파일들이 생성됩니다:
-- `mafia-game-1.0.0-server-executable.jar` - 서버 실행 파일
-- `mafia-game-1.0.0-client-executable.jar` - 클라이언트 실행 파일
-- `mafia-game-1.0.0.jar` - 일반 JAR 파일
 
 ### 실행 방법
 
-#### 방법 1: 빌드된 실행 파일 사용 (권장)
-
-**1. 서버 실행 (먼저 실행)**
+**1. 서버 실행**
 
 ```bash
 java -jar target/mafia-game-1.0.0-server-executable.jar
 ```
 
 1. 서버 GUI가 열립니다
-2. Port Number를 확인 (기본값: 30000)
+2. Port Number 확인 (기본값: 30000)
 3. "Start Server" 버튼 클릭
-4. 플레이어들이 접속하기를 기다립니다
-5. 4명 이상 접속하면 "Start Game" 버튼 클릭
+4. 플레이어 접속 대기
 
-**2. 클라이언트 실행 (여러 개 실행 가능)**
+**2. 클라이언트 실행 (여러 개 가능)**
 
 ```bash
 java -jar target/mafia-game-1.0.0-client-executable.jar
 ```
 
-1. 클라이언트 GUI가 열립니다
-2. User Name 입력 (각자 다른 이름)
-3. IP Address 입력 (로컬: 127.0.0.1)
-4. Port Number 입력 (서버와 동일하게)
-5. "Connect to Game" 버튼 클릭
+1. User Name 입력
+2. IP Address 입력 (로컬: 127.0.0.1)
+3. Port Number 입력 (서버와 동일)
+4. "Connect to Game" 버튼 클릭
 
-#### 방법 2: 컴파일된 클래스 파일 직접 실행
+**3. 게임 시작**
 
+- 최소 4명 이상 접속 필요
+- 서버에서 "Start Game" 버튼 클릭
+
+### 테스트 모드
+
+개발 및 테스트를 위한 자동화 모드입니다.
+
+**활성화 방법:**
+
+`MafiaGameServer.java` 74번 줄:
+```java
+private static final boolean TEST_MODE = true;
+```
+
+`MafiaGameClientMain.java` 52번 줄:
+```java
+private static final boolean TEST_MODE = true;
+```
+
+**테스트 모드 기능:**
+- 클라이언트: 자동 로그인 (랜덤 이름 생성)
+- 서버: 8명 접속 시 자동 게임 시작
+
+**빠른 테스트:**
 ```bash
-# 먼저 컴파일
+# 컴파일
 mvn clean compile
 
 # 서버 실행
-java -cp target/classes mafia.game.MafiaGameServer
-
-# 클라이언트 실행 (각각 새 터미널에서)
-java -cp target/classes mafia.game.MafiaGameClientMain
-```
-
-#### 방법 3: 한 번에 여러 클라이언트 실행 (테스트용)
-
-```bash
-# 먼저 컴파일
-mvn clean compile
-
-# 서버 1개 + 클라이언트 8개 동시 실행
 java -cp target/classes mafia.game.MafiaGameServer &
-sleep 2
-for i in {1..8}; do
-  java -cp target/classes mafia.game.MafiaGameClientMain &
-  sleep 1
-done
-```
 
-### 테스트 방법
-
-- **한 컴퓨터에서 테스트하려면**:
-
-  1. 서버 1개 실행
-  2. 클라이언트 4개 이상 실행 (각각 다른 이름으로 접속)
-  3. 서버에서 "Start Game" 클릭
-
-- **여러 컴퓨터에서 테스트하려면**:
-  1. 서버를 실행한 컴퓨터의 IP 주소 확인
-  2. 다른 컴퓨터에서 클라이언트 실행 시 해당 IP 주소 입력
-
-## 🧪 테스트 모드 (개발자용)
-
-게임 테스트를 위한 편의 기능이 구현되어 있습니다.
-
-### 테스트 모드 활성화
-
-#### 클라이언트 (MafiaGameClientMain.java)
-```java
-// 52번 줄
-private static final boolean TEST_MODE = true;
-```
-
-**동작:**
-- ✅ 로그인 화면 건너뛰기
-- ✅ 자동으로 랜덤 이름(`Player_XXXX`) 생성
-- ✅ 자동으로 `127.0.0.1:30000` 서버에 접속
-
-#### 서버 (MafiaGameServer.java)
-```java
-// 74번 줄
-private static final boolean TEST_MODE = true;
-
-// 78번 줄
-private static final int AUTO_START_PLAYER_COUNT = 8;
-```
-
-**동작:**
-- ✅ 설정된 인원수(기본 8명)가 접속하면 자동으로 게임 시작
-- ✅ 수동으로 "Start Game" 버튼을 누를 필요 없음
-
-### 테스트 모드 사용법
-
-#### 1. 빠른 테스트 (권장)
-```bash
-# 먼저 컴파일
-mvn clean compile
-
-# 서버 1개 실행
-java -cp target/classes mafia.game.MafiaGameServer &
-sleep 2
-
-# 클라이언트 8개 연속 실행
+# 클라이언트 8개 실행
 for i in {1..8}; do
   java -cp target/classes mafia.game.MafiaGameClientMain &
   sleep 0.5
 done
-
-# 자동으로 8명이 모이면 게임 시작!
 ```
 
-#### 2. 수동 실행
-```bash
-# 서버 실행
-java -cp target/classes mafia.game.MafiaGameServer
+---
 
-# 새 터미널 8개를 열어서 각각 실행
-java -cp target/classes mafia.game.MafiaGameClientMain
-java -cp target/classes mafia.game.MafiaGameClientMain
-java -cp target/classes mafia.game.MafiaGameClientMain
-# ... (총 8번)
-```
+## ✨ 게임 방법
 
-### 배포 모드로 전환
+### 게임 진행 순서
 
-**배포 전에 반드시** 두 파일 모두에서 `TEST_MODE`를 `false`로 변경하세요!
+**1단계: 대기 (WAITING)**
+- 최소 4명 이상 접속
+- 서버 관리자가 게임 시작
 
-```java
-// MafiaGameClientMain.java 52번 줄
-private static final boolean TEST_MODE = false;  // true -> false
-
-// MafiaGameServer.java 74번 줄
-private static final boolean TEST_MODE = false;  // true -> false
-```
-
-### 테스트 모드 vs 배포 모드 비교
-
-| 기능 | 테스트 모드 (true) | 배포 모드 (false) |
-|------|-------------------|------------------|
-| 클라이언트 로그인 | 자동 (랜덤 이름) | 수동 (이름 입력) |
-| 게임 시작 | 자동 (8명 접속 시) | 수동 (버튼 클릭) |
-| 테스트 편의성 | ⭐⭐⭐⭐⭐ | ⭐⭐ |
-| 실제 게임 진행 | ⭐⭐ | ⭐⭐⭐⭐⭐ |
-
-## 📦 프로젝트 구조
-
-```
-마피아2/
-├── .github/
-│   └── workflows/
-│       └── build.yml                 # GitHub Actions CI/CD 설정
-├── src/
-│   └── main/
-│       ├── java/
-│       │   └── mafia/game/
-│       │       ├── MafiaGameServer.java         # 서버 메인 클래스
-│       │       ├── MafiaGameClientMain.java     # 클라이언트 로그인 화면
-│       │       └── MafiaGameClientView.java     # 클라이언트 게임 화면
-│       └── resources/
-│           ├── GameSound/            # 게임 사운드 파일
-│           │   ├── game_start.wav    # 게임 시작 사운드
-│           │   ├── night.wav         # 밤 시작 사운드
-│           │   ├── morning.wav       # 아침 시작 사운드
-│           │   ├── vote.wav          # 투표 시작 사운드
-│           │   ├── Citizen/          # 시민 팀 직업 사운드
-│           │   └── Mafia_team/       # 마피아 팀 직업 사운드
-│           └── info/                 # 이미지 리소스
-│               ├── background.png
-│               ├── server_background.jpg
-│               ├── Default.png       # 기본 프로필 이미지
-│               └── [역할별 이미지들] # mafia.png, doctor.png 등
-├── target/                           # Maven 빌드 결과물 (자동 생성)
-│   ├── classes/                      # 컴파일된 클래스 파일
-│   ├── mafia-game-1.0.0.jar         # 일반 JAR
-│   ├── mafia-game-1.0.0-server-executable.jar  # 서버 실행 JAR
-│   └── mafia-game-1.0.0-client-executable.jar  # 클라이언트 실행 JAR
-├── pom.xml                           # Maven 설정 파일
-├── .gitignore                        # Git 무시 파일 목록
-├── MAVEN_MIGRATION.md                # Maven 마이그레이션 가이드
-└── README.md                         # 프로젝트 문서 (이 파일)
-```
-
-## 🎮 게임 규칙
-
-### 역할
-
-1. **마피아 (MAFIA)**
-
-   - 밤에 시민 한 명을 제거할 수 있습니다
-   - 마피아가 시민 수와 같거나 많아지면 승리
-   - 4명일 때: 1명, 5명 이상: 2명
-
-2. **스파이 (SPY)** (마피아 팀)
-
-   - 밤에 한 명의 직업을 알아낼 수 있습니다
-   - 마피아를 조사하면 접선하여 마피아 팀이 됩니다
-
-3. **마담 (MADAME)** (마피아 팀)
-
-   - 낮 투표로 플레이어를 유혹하여 밤에 능력 사용을 막습니다
-   - 마피아를 유혹하면 접선하여 마피아 팀이 됩니다
-
-4. **의사 (DOCTOR)**
-
-   - 밤에 한 명을 지정하여 보호할 수 있습니다
-   - 마피아의 공격으로부터 보호 가능
-
-5. **경찰 (POLICE)**
-
-   - 밤에 한 명을 조사하여 마피아 여부 확인 가능
-   - 조사 결과는 본인만 확인 가능
-
-6. **정치인 (POLITICIAN)**
-
-   - 투표로 죽지 않으며 2표를 행사합니다
-
-7. **군인 (SOLDIER)**
-
-   - 마피아의 공격을 한 차례 버틸 수 있습니다
-
-8. **영매 (SHAMAN)**
-
-   - 죽은 자들의 대화를 보고 한 명을 성불시켜 직업을 알아낼 수 있습니다
-
-9. **기자 (REPORTER)**
-
-   - 2일차~8일차 밤에 한 명을 선택하여 다음 날 직업을 공개합니다
-
-10. **도굴꾼 (GHOUL)**
-
-    - 첫날 밤 마피아에게 살해당한 사람의 직업을 얻습니다
-
-11. **건달 (GANGSTER)**
-
-    - 밤마다 한 명을 선택하여 다음 날 투표를 못하게 만듭니다
-
-12. **성직자 (PRIEST)**
-
-    - 게임 중 단 한 번, 죽은 플레이어를 부활시킬 수 있습니다
-
-13. **시민 (CITIZEN)**
-    - 특별한 능력은 없지만 투표로 마피아를 찾아야 합니다
-
-### 게임 진행
-
-#### 1단계: 대기 (WAITING)
-
-- 최소 4명 이상의 플레이어가 접속해야 함
-- 서버 관리자가 "Start Game" 버튼을 눌러 게임 시작
-- 역할이 무작위로 배정됨
-
-#### 2단계: 밤 (NIGHT) - 30초
-
+**2단계: 밤 (NIGHT) - 30초**
 - 마피아: 제거할 대상 선택
 - 의사: 보호할 대상 선택
 - 경찰: 조사할 대상 선택
-- 기타 특수 직업: 각자의 능력 사용
-- 시민: 아무 행동도 할 수 없음
+- 기타 특수 직업: 능력 사용
+- 시민: 대기
 
-#### 3단계: 밤 결과 발표
-
+**3단계: 밤 결과 발표**
 - 마피아에게 제거된 사람 공개
-- 의사가 보호한 경우 생존
-- 군인의 방어막으로 생존 가능
-- 경찰과 스파이는 조사 결과를 개인적으로 확인
+- 의사 보호 성공 시 생존
+- 군인 방어막으로 생존 가능
 
-#### 4단계: 낮 (DAY) - 30초
+**4단계: 낮 (DAY) - 30초**
+- 자유 토론
+- 의심되는 사람 찾기
+- 기자 특종 발표 (해당 시)
+- 성직자 부활 (해당 시)
 
-- 모든 플레이어가 자유롭게 대화
-- 의심되는 사람에 대해 토론
-- 기자의 특종 발표 (해당하는 경우)
-- 성직자의 부활 (해당하는 경우)
+**5단계: 투표 (VOTE) - 20초**
+- 의심되는 사람에게 투표
+- 최다 득표자 제거
+- 동점 시 아무도 제거 안 됨
 
-#### 5단계: 투표 (VOTE) - 20초
+**6단계: 최후의 반론 - 15초**
+- 제거 대상자의 변론
+- 찬반 투표로 최종 결정
 
-- 살아있는 플레이어 중 한 명에게 투표
-- 가장 많은 표를 받은 사람이 제거됨
-- 동점이거나 투표가 없으면 아무도 제거되지 않음
-- 정치인은 2표를 행사하며 투표로 죽지 않음
+**7단계: 승리 조건 확인**
+- 시민 팀 승리: 모든 마피아 제거
+- 마피아 팀 승리: 마피아 수 ≥ 시민 수
 
-#### 6단계: 승리 조건 확인
+조건 미충족 시 2단계로 반복
 
-- **시민 팀 승리**: 모든 마피아 팀이 제거됨
-- **마피아 팀 승리**: 마피아 팀 수 ≥ 시민 팀 파워
+### 플레이 팁
 
-승리 조건이 만족되지 않으면 2단계(밤)로 돌아가서 반복
+**시민 팀 전략:**
+- 경찰 정보 신중히 판단
+- 투표 패턴 분석
+- 행동 패턴 관찰
+- 정보 공유
 
-## 🎯 플레이 팁
+**마피아 팀 전략:**
+- 시민처럼 자연스럽게 행동
+- 능력자(의사/경찰) 우선 제거
+- 다른 플레이어에게 의심 유도
+- 동료와 투표 분산
 
-### 시민 팀 전략
+---
 
-1. **경찰 정보 활용**: 경찰의 조사 결과를 신중히 듣고 판단
-2. **투표 패턴 분석**: 누가 누구에게 투표하는지 관찰
-3. **행동 패턴 관찰**: 의심스러운 발언이나 행동 체크
-4. **정보 공유**: 자신이 본 것, 느낀 것을 공유
+## ✨ 역할 설명
 
-### 마피아 전략
+### 마피아 팀
 
-1. **시민처럼 행동**: 너무 조용하거나 적극적이지 않게
-2. **능력자 제거 우선**: 의사/경찰을 먼저 제거
-3. **프레임 짜기**: 다른 플레이어를 의심하도록 유도
-4. **팀플레이**: 동료 마피아와 투표를 분산
+**마피아 (MAFIA)**
+- 밤에 시민 한 명 제거
+- 마피아 수 ≥ 시민 수 시 승리
+- 4명: 1명 / 5명 이상: 2명
 
-## 🔧 개발 가이드
+**스파이 (SPY)**
+- 밤에 한 명의 직업 조사
+- 마피아 조사 시 접선하여 마피아 팀 합류
+- 군인에게 정체 노출
 
-### 빌드 시스템
+**마담 (MADAME)**
+- 낮 투표로 플레이어 유혹
+- 유혹당한 플레이어는 밤 능력 사용 불가
+- 마피아 유혹 시 접선하여 마피아 팀 합류
 
-이 프로젝트는 **Maven**을 사용하여 빌드됩니다.
+### 시민 팀
+
+**의사 (DOCTOR)**
+- 밤에 한 명 보호
+- 마피아 공격 방어
+
+**경찰 (POLICE)**
+- 밤에 한 명 조사
+- 마피아 여부 확인
+
+**정치인 (POLITICIAN)**
+- 투표로 죽지 않음
+- 2표 행사
+
+**군인 (SOLDIER)**
+- 마피아 공격 1회 방어
+- 스파이 조사 시 스파이 정체 파악
+
+**영매 (SHAMAN)**
+- 죽은 자 대화 확인
+- 한 명 성불시켜 직업 확인
+
+**기자 (REPORTER)**
+- 2~8일차 밤에 한 명 취재
+- 다음 날 직업 공개
+
+**도굴꾼 (GHOUL)**
+- 첫날 밤 마피아 희생자의 직업 획득
+
+**건달 (GANGSTER)**
+- 밤마다 한 명 선택
+- 다음 날 투표 금지
+
+**성직자 (PRIEST)**
+- 게임 중 1회 부활 능력
+- 성불된 플레이어는 부활 불가
+
+**시민 (CITIZEN)**
+- 특별 능력 없음
+- 투표로 마피아 찾기
+
+---
+
+## ✨ 주요 기능
+
+### 1. 쪽지 시스템
+
+낮 시간에 익명 쪽지 전송 가능
+
+**사용법:**
+```
+/whisper [대상] [내용]
+```
+
+**특징:**
+- 익명 전송
+- 시간당 최대 10개 제한
+- 200자 제한
+
+### 2. 로비 시스템
+
+게임 시작 전 30초 대기실
+
+**기능:**
+- 준비 상태 확인
+- 역할 선호도 설정 (최대 3개)
+- 자유 채팅
+- 모두 준비 시 자동 시작
+
+### 3. 통계 시스템
+
+플레이어 기록 추적 및 업적
+
+**명령어:**
+```
+/stats              - 내 통계
+/leaderboard        - 리더보드
+/achievements       - 업적 확인
+```
+
+**업적 목록:**
+- 첫 승리
+- 완벽한 마피아
+- 생존왕 (10게임 연속)
+- 명탐정 (마피아 3명 이상 찾기)
+- 불사조 (2번 부활)
+- 베테랑 (100게임)
+- 챔피언 (승률 70% 이상)
+
+### 4. 실시간 투표 집계
+
+투표 진행 상황 실시간 표시
+
+**기능:**
+- 득표수 바 차트
+- 투표율 계산
+- 공개/익명 모드
+
+**예시:**
+```
+플레이어1: ████████░░ 8표
+플레이어2: ███████░░░ 7표
+플레이어3: ████░░░░░░ 4표
+```
+
+### 5. 역할 가이드
+
+모든 역할의 상세 설명
+
+**명령어:**
+```
+/guide              - 내 역할 가이드
+/guide MAFIA        - 마피아 가이드
+/tutorial           - 기본 튜토리얼
+/help               - 도움말
+```
+
+### 6. 감정 표현
+
+이모지로 감정 표현
+
+**명령어:**
+```
+/emotion THUMBS_UP          - 👍
+/emotion SHOCKED Player1    - Player1에게 😱
+/emotions                   - 이모지 목록
+```
+
+**이모지 종류:**
+- 긍정: 👍 👏 ❤️ 😄 🎉
+- 부정: 👎 😡 😢 💔
+- 중립: 🤔 😐 🤷
+- 게임: 😱 🎯 🔍 ⚠️ 🤐 🎭 💀
+
+### 7. 재접속 기능
+
+연결 끊김 시 30초 내 재접속 가능
+
+**기능:**
+- 게임 상태 자동 저장
+- 역할, 정보 복원
+- 채팅 히스토리 제공
+- 타임아웃 시 자동 처리
+
+### 8. 이벤트 모드
+
+시즌별 특별 이벤트
+
+**크리스마스 이벤트 (12월):**
+- 산타가 랜덤 플레이어에게 2표 스킬 선물
+- 크리스마스 테마 메시지
+
+**향후 추가 예정:**
+- 할로윈 (10월): 뱀파이어, 늑대인간
+- 설날 (1-2월): 점쟁이, 조상님
+- 여름 (7-8월): 라이프가드, 상어
+
+---
+
+## ✨ 프로젝트 구조
+
+```
+마피아2/
+├── src/main/java/mafia/game/
+│   ├── MafiaGameServer.java          # 서버 메인
+│   ├── MafiaGameClientMain.java      # 클라이언트 로그인
+│   ├── MafiaGameClientView.java      # 클라이언트 게임 화면
+│   │
+│   ├── models/                        # 데이터 모델
+│   │   ├── PlayerStatistics.java
+│   │   └── Message.java
+│   │
+│   ├── features/                      # 기능 모듈
+│   │   ├── WhisperManager.java        # 쪽지 시스템
+│   │   ├── LobbyManager.java          # 로비 시스템
+│   │   ├── StatisticsManager.java     # 통계 시스템
+│   │   ├── VoteTracker.java           # 투표 집계
+│   │   ├── RoleGuideManager.java      # 역할 가이드
+│   │   ├── EmotionManager.java        # 감정 표현
+│   │   └── ReconnectionManager.java   # 재접속 관리
+│   │
+│   └── events/                        # 이벤트 시스템
+│       └── EventModeManager.java
+│
+├── src/main/resources/
+│   ├── GameSound/                     # 게임 사운드
+│   └── info/                          # 이미지 리소스
+│
+├── game_data/statistics/              # 플레이어 통계 저장
+├── pom.xml                            # Maven 설정
+└── README.md                          # 이 파일
+```
+
+---
+
+## ✨ 개발 가이드
+
+### 빌드 명령어
 
 ```bash
 # 컴파일만
@@ -392,65 +384,124 @@ mvn clean package
 mvn clean package -DskipTests
 ```
 
+### 디자인 패턴
+
+**Singleton Pattern**
+- 모든 매니저 클래스
+
+**Observer Pattern**
+- 이벤트 리스너 시스템
+
+**Strategy Pattern**
+- 역할별 전략
+
+**Builder Pattern**
+- 복잡한 객체 생성
+
+**Memento Pattern**
+- 재접속 상태 저장
+
+### 새 기능 추가 방법
+
+**1. 새 매니저 생성**
+
+```java
+public class CustomManager {
+    private static CustomManager instance;
+    
+    public static synchronized CustomManager getInstance() {
+        if (instance == null) {
+            instance = new CustomManager();
+        }
+        return instance;
+    }
+    
+    private CustomManager() {
+        // 초기화
+    }
+}
+```
+
+**2. 서버에 통합**
+
+```java
+public class MafiaGameServer {
+    private CustomManager customManager;
+    
+    private void initializeManagers() {
+        customManager = CustomManager.getInstance();
+    }
+}
+```
+
+### 새 이벤트 추가
+
+```java
+EventMode newEvent = new EventMode.Builder("NEW_EVENT", "새 이벤트")
+    .description("설명")
+    .activePeriod(Month.APRIL, 1, Month.APRIL, 30)
+    .addSpecialRole("NEW_ROLE", "새 역할", "능력")
+    .build();
+
+EventModeManager.getInstance().registerEvent(newEvent);
+```
+
 ### CI/CD
 
-GitHub Actions를 통해 자동 빌드 및 릴리스가 이루어집니다.
+GitHub Actions 자동 빌드 및 릴리스
 
-- **자동 빌드**: 모든 push와 PR에 대해 자동 빌드
-- **자동 릴리스**: `v*` 태그를 푸시하면 GitHub Releases에 자동 업로드
-
-#### 릴리스 방법
-
+**릴리스 방법:**
 ```bash
-# 태그 생성
 git tag -a v1.0.0 -m "Release version 1.0.0"
-
-# 태그 푸시
 git push origin v1.0.0
 ```
 
-GitHub Actions가 자동으로:
+---
 
-1. 프로젝트 빌드
-2. JAR 파일 생성
-3. GitHub Releases에 업로드
-
-## 📡 프로토콜 설명
-
-### 서버 → 클라이언트
-
-- `ROLE:역할명` - 역할 배정
-- `PHASE:단계명` - 게임 단계 변경
-- `PLAYERS:이름1,이름2,...` - 플레이어 목록 (죽은 플레이어는 [DEAD] 접두사)
-- `DEAD:true/false` - 사망/부활 알림
-- `SYSTEM: 메시지` - 시스템 메시지
-
-### 클라이언트 → 서버
-
-- `/login 이름` - 로그인
-- `NIGHT_ACTION:역할:대상` - 밤 행동
-- `VOTE:대상` - 투표
-- `[이름] 메시지` - 일반 채팅
-- `/exit` - 종료
-
-## 🛠️ 기술 스택
+## ✨ 기술 스택
 
 - **언어**: Java 17
-- **빌드 도구**: Maven 3.x
+- **빌드**: Maven 3.x
 - **GUI**: Java Swing
-- **네트워크**: Java Socket Programming
-- **CI/CD**: GitHub Actions
+- **네트워크**: Java Socket
 - **사운드**: Java Sound API
-- **이미지**: Java ImageIO
+- **CI/CD**: GitHub Actions
 
-## 📝 라이선스
+### 프로토콜
+
+**서버 → 클라이언트:**
+```
+ROLE:역할명                    - 역할 배정
+PHASE:단계명                   - 게임 단계 변경
+PLAYERS:이름1,이름2,...        - 플레이어 목록
+DEAD:true/false                - 사망/부활
+SYSTEM: 메시지                 - 시스템 메시지
+```
+
+**클라이언트 → 서버:**
+```
+/login 이름                    - 로그인
+NIGHT_ACTION:역할:대상         - 밤 행동
+VOTE:대상                      - 투표
+[이름] 메시지                  - 채팅
+/exit                          - 종료
+```
+
+---
+
+## ✨ 라이선스
 
 이 프로젝트는 교육 목적으로 작성되었습니다.
 
-## 🤝 기여
+## ✨ 기여
 
 이슈와 PR은 언제나 환영합니다!
 
-## 📧 문의
+## ✨ 문의
 
-프로젝트에 대한 문의사항은 Issues를 통해 남겨주세요.
+GitHub Issues: https://github.com/khg9859/Mafia/issues
+
+---
+
+**버전**: 2.0  
+**최종 업데이트**: 2025-12-04

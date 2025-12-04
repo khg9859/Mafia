@@ -56,7 +56,6 @@ import javax.swing.border.EmptyBorder;
 // 신규 기능 매니저 임포트
 import mafia.game.features.*;
 import mafia.game.models.*;
-import mafia.game.ai.*;
 import mafia.game.events.*;
 import mafia.game.features.WhisperManager.WhisperResult;
 import mafia.game.features.EmotionManager.EmotionResult;
@@ -821,30 +820,64 @@ public class MafiaGameServer extends JFrame {
 
     /**
      * 이벤트 모드 확인 및 적용
+     * 
+     * 현재 구현: 크리스마스 이벤트 (12월)
+     * 
+     * 확장 가능한 구조:
+     * - 할로윈 이벤트 (10월): 뱀파이어, 늑대인간 등 특수 역할 추가
+     * - 설날 이벤트 (1-2월): 점쟁이, 조상님 등 한국 전통 테마
+     * - 여름 이벤트 (7-8월): 라이프가드, 상어 등 해변 테마
+     * 
+     * 새 이벤트 추가 방법:
+     * 1. EventModeManager에 이벤트 등록
+     * 2. 이 메소드에 월별 조건 추가
+     * 3. 이벤트별 특수 로직 구현 (giveSantaGift 참고)
      */
     private void checkAndApplyEventMode() {
-        // 크리스마스 시즌 확인 (12월)
         java.time.LocalDate now = java.time.LocalDate.now();
-        if (now.getMonthValue() == 12) {
-            christmasEventActive = true;
-            AppendText("🎄 크리스마스 이벤트가 활성화되었습니다!");
-            WriteAll("SYSTEM: \n");
-            WriteAll("SYSTEM: 🎄🎅✨ 메리 크리스마스! ✨🎅🎄\n");
-            WriteAll("SYSTEM: \n");
-            WriteAll("SYSTEM: 곧 크리스마스입니다, 여러분!\n");
-            WriteAll("SYSTEM: 산타가 특별한 선물을 가져왔습니다...\n");
-            WriteAll("SYSTEM: \n");
-
-            // 3초 후 산타의 선물 발표
-            new Thread(() -> {
-                try {
-                    Thread.sleep(3000);
-                    giveSantaGift();
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-            }).start();
+        int currentMonth = now.getMonthValue();
+        
+        // 크리스마스 이벤트 (12월)
+        if (currentMonth == 12) {
+            activateChristmasEvent();
         }
+        
+        // TODO: 다른 이벤트 추가 예시
+        // else if (currentMonth == 10) {
+        //     activateHalloweenEvent();
+        // }
+        // else if (currentMonth >= 1 && currentMonth <= 2) {
+        //     activateLunarNewYearEvent();
+        // }
+        // else if (currentMonth >= 7 && currentMonth <= 8) {
+        //     activateSummerEvent();
+        // }
+    }
+    
+    /**
+     * 크리스마스 이벤트 활성화
+     * 산타가 랜덤 플레이어에게 2표 스킬을 선물합니다.
+     */
+    private void activateChristmasEvent() {
+        christmasEventActive = true;
+        AppendText("크리스마스 이벤트가 활성화되었습니다!");
+        
+        WriteAll("SYSTEM: \n");
+        WriteAll("SYSTEM: 🎄🎅✨ 메리 크리스마스! ✨🎅🎄\n");
+        WriteAll("SYSTEM: \n");
+        WriteAll("SYSTEM: 곧 크리스마스입니다, 여러분!\n");
+        WriteAll("SYSTEM: 산타가 특별한 선물을 가져왔습니다...\n");
+        WriteAll("SYSTEM: \n");
+
+        // 3초 후 산타의 선물 발표
+        new Thread(() -> {
+            try {
+                Thread.sleep(3000);
+                giveSantaGift();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }).start();
     }
 
     /**
@@ -1301,6 +1334,7 @@ public class MafiaGameServer extends JFrame {
     private void scheduleNightPhaseEnd() {
         new Thread(() -> {
             try {
+                // 30초 대기
                 Thread.sleep(30000);
                 processNightActions();
                 Thread.sleep(1000);
@@ -1310,6 +1344,8 @@ public class MafiaGameServer extends JFrame {
             }
         }).start();
     }
+
+
 
     /**
      * 밤 행동 처리
@@ -1697,6 +1733,7 @@ public class MafiaGameServer extends JFrame {
     private void scheduleVotePhaseEnd() {
         new Thread(() -> {
             try {
+                // 20초 대기
                 Thread.sleep(20000);
                 processVoteResult();
             } catch (InterruptedException e) {
@@ -1704,6 +1741,8 @@ public class MafiaGameServer extends JFrame {
             }
         }).start();
     }
+
+
 
     /**
      * 투표 결과 처리
@@ -1991,6 +2030,8 @@ public class MafiaGameServer extends JFrame {
         // 다음 밤으로
         scheduleNextNightPhase();
     }
+
+
 
     /**
      * 다음 밤 페이즈 예약
@@ -2312,8 +2353,8 @@ public class MafiaGameServer extends JFrame {
 
         // 소켓 및 사용자 정보
         private Socket client_socket;
-        private Vector<UserService> user_vc;
-        private String UserName = "";
+        protected Vector<UserService> user_vc;
+        protected String UserName = "";
 
         /**
          * 사용자 역할
@@ -2948,6 +2989,8 @@ public class MafiaGameServer extends JFrame {
             }
         }
 
+
+
         /**
          * 도움말 명령어 처리
          * 프로토콜: /help 또는 /도움말
@@ -2958,22 +3001,22 @@ public class MafiaGameServer extends JFrame {
             help.append("                  마피아 게임 명령어 도움말\n");
             help.append("============================================================\n\n");
 
-            help.append("📖 역할 가이드:\n");
+            help.append("역할 가이드:\n");
             help.append("  /가이드 또는 /역할      - 자신의 역할 가이드 보기\n");
             help.append("  /가이드 마피아          - 특정 역할 가이드 보기\n");
             help.append("  예시: /가이드 의사, /가이드 경찰\n\n");
 
-            help.append("📊 통계 조회:\n");
+            help.append("통계 조회:\n");
             help.append("  /통계 또는 /전적        - 자신의 통계 보기\n");
             help.append("  /통계 플레이어이름      - 특정 플레이어 통계 보기\n");
             help.append("  예시: /통계 Player1\n\n");
 
-            help.append("😊 감정 표현:\n");
+            help.append("감정 표현:\n");
             help.append("  /감정                   - 사용 가능한 감정 목록 보기\n");
             help.append("  /감정 좋아요            - 감정 표현하기\n");
             help.append("  /감정 좋아요 Player1    - 특정 플레이어에게 감정 표현\n\n");
 
-            help.append("❓ 기타:\n");
+            help.append("기타:\n");
             help.append("  /도움말 또는 /명령어    - 이 도움말 보기\n\n");
 
             help.append("============================================================\n");
@@ -3506,6 +3549,12 @@ public class MafiaGameServer extends JFrame {
             }
         }
     } // End of UserService class
+
+    // ========================================
+    // AI 플레이어 시스템
+    // ========================================
+
+
 
     /**
      * 마피아 팀 정보 공유
