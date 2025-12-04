@@ -325,9 +325,15 @@ public class MafiaGameClientView extends JFrame {
      * 플레이어 수와 현재 페이즈를 표시합니다.
      */
     private void createTopStatusBar() {
+        // 상단 배경 이미지 패널 추가
+        JPanel topImagePanel = new TopImagePanel();
+        topImagePanel.setBounds(0, 0, 1200, 150);
+        topImagePanel.setLayout(null);
+        contentPane.add(topImagePanel);
+
         JPanel topBar = new JPanel();
-        topBar.setBackground(new Color(40, 40, 40));
-        topBar.setBounds(0, 0, 1200, 50);
+        topBar.setBackground(new Color(40, 40, 40, 180)); // 반투명
+        topBar.setBounds(0, 100, 1200, 50);
         topBar.setLayout(null);
         contentPane.add(topBar);
 
@@ -345,6 +351,9 @@ public class MafiaGameClientView extends JFrame {
         lblPhaseInfo.setHorizontalAlignment(SwingConstants.CENTER);
         lblPhaseInfo.setBounds(400, 10, 400, 30);
         topBar.add(lblPhaseInfo);
+
+        // 이미지를 맨 뒤로 보내기
+        contentPane.setComponentZOrder(topImagePanel, contentPane.getComponentCount() - 1);
     }
 
     /**
@@ -355,7 +364,7 @@ public class MafiaGameClientView extends JFrame {
         JPanel chatPanel = new JPanel();
         chatPanel.setBackground(new Color(35, 35, 35));
         chatPanel.setBorder(new LineBorder(new Color(60, 60, 60), 1));
-        chatPanel.setBounds(10, 60, 540, 590);
+        chatPanel.setBounds(10, 160, 540, 490);
         chatPanel.setLayout(null);
         contentPane.add(chatPanel);
 
@@ -380,7 +389,7 @@ public class MafiaGameClientView extends JFrame {
      */
     private void createChatArea(JPanel chatPanel) {
         JScrollPane scrollPane = new JScrollPane();
-        scrollPane.setBounds(10, 40, 520, 490);
+        scrollPane.setBounds(10, 40, 520, 390);
         scrollPane.setBorder(null);
         chatPanel.add(scrollPane);
 
@@ -408,7 +417,7 @@ public class MafiaGameClientView extends JFrame {
         txtInput.setBorder(BorderFactory.createCompoundBorder(
                 new LineBorder(new Color(80, 80, 80), 1),
                 new EmptyBorder(5, 10, 5, 10)));
-        txtInput.setBounds(10, 540, 420, 40);
+        txtInput.setBounds(10, 440, 420, 40);
         chatPanel.add(txtInput);
 
         // 전송 버튼
@@ -418,7 +427,7 @@ public class MafiaGameClientView extends JFrame {
         btnSend.setForeground(Color.WHITE);
         btnSend.setBorderPainted(false);
         btnSend.setFocusPainted(false);
-        btnSend.setBounds(440, 540, 90, 40);
+        btnSend.setBounds(440, 440, 90, 40);
         chatPanel.add(btnSend);
     }
 
@@ -429,7 +438,7 @@ public class MafiaGameClientView extends JFrame {
     private void createPlayerCardGrid() {
         JPanel rightPanel = new JPanel();
         rightPanel.setBackground(new Color(30, 30, 30));
-        rightPanel.setBounds(560, 60, 620, 590);
+        rightPanel.setBounds(560, 160, 620, 490);
         rightPanel.setLayout(null);
         contentPane.add(rightPanel);
 
@@ -443,7 +452,7 @@ public class MafiaGameClientView extends JFrame {
         // 카드 그리드 패널
         cardGridPanel = new JPanel();
         cardGridPanel.setBackground(new Color(30, 30, 30));
-        cardGridPanel.setBounds(10, 45, 600, 535);
+        cardGridPanel.setBounds(10, 45, 600, 435);
         cardGridPanel.setLayout(new GridLayout(2, 4, 15, 15));
         rightPanel.add(cardGridPanel);
 
@@ -1538,6 +1547,43 @@ public class MafiaGameClientView extends JFrame {
             if (backgroundImage != null) {
                 // 배경 이미지를 패널 크기에 맞게 그리기
                 g.drawImage(backgroundImage, 0, 0, getWidth(), getHeight(), this);
+            }
+        }
+    }
+
+    /**
+     * 상단 이미지 패널
+     *
+     * 게임 화면 상단에 background.png를 표시하는 커스텀 패널입니다.
+     */
+    class TopImagePanel extends JPanel {
+        private Image topImage;
+
+        /**
+         * 상단 이미지 패널 생성자
+         *
+         * /info/background.png 파일을 로드합니다.
+         */
+        public TopImagePanel() {
+            setOpaque(false);
+            try {
+                java.net.URL imageURL = getClass().getResource("/info/background.png");
+                if (imageURL != null) {
+                    topImage = new javax.swing.ImageIcon(imageURL).getImage();
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            super.paintComponent(g);
+            if (topImage != null) {
+                // 이미지를 원본 크기 그대로 표시 (중앙 정렬)
+                int x = (getWidth() - topImage.getWidth(this)) / 2;
+                int y = (getHeight() - topImage.getHeight(this)) / 2;
+                g.drawImage(topImage, x, y, this);
             }
         }
     }

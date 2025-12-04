@@ -1706,16 +1706,16 @@ public class MafiaGameServer extends JFrame {
         new Thread(() -> {
             try {
                 while (voteTracker.isActive() && gamePhase.equals("VOTE")) {
-                    Thread.sleep(3000); // 3초마다 업데이트
+                    Thread.sleep(5000); // 5초마다 업데이트
 
                     // 투표 현황 브로드캐스트
                     String stats = voteTracker.getStatistics();
-                    WriteAll("VOTE_PROGRESS:" + stats + "\n");
 
                     // 투표 바 차트 전송
                     List<String> barChart = voteTracker.getVoteBarChart(20);
                     StringBuilder chartMsg = new StringBuilder();
-                    chartMsg.append("\n📊 실시간 투표 현황:\n");
+                    chartMsg.append(stats).append("\n");
+                    chartMsg.append("실시간 투표 현황:\n");
                     for (String bar : barChart) {
                         chartMsg.append("  ").append(bar).append("\n");
                     }
