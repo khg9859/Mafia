@@ -11,6 +11,7 @@
 5. [프로젝트 구조](#-프로젝트-구조)
 6. [개발 가이드](#-개발-가이드)
 7. [기술 스택](#-기술-스택)
+8. [트러블슈팅](#-트러블슈팅)
 
 ---
 
@@ -68,20 +69,24 @@ java -jar target/mafia-game-1.0.0-client-executable.jar
 **활성화 방법:**
 
 `MafiaGameServer.java` 74번 줄:
+
 ```java
 private static final boolean TEST_MODE = true;
 ```
 
 `MafiaGameClientMain.java` 52번 줄:
+
 ```java
 private static final boolean TEST_MODE = true;
 ```
 
 **테스트 모드 기능:**
+
 - 클라이언트: 자동 로그인 (랜덤 이름 생성)
 - 서버: 8명 접속 시 자동 게임 시작
 
 **빠른 테스트:**
+
 ```bash
 # 컴파일
 mvn clean compile
@@ -103,10 +108,12 @@ done
 ### 게임 진행 순서
 
 **1단계: 대기 (WAITING)**
+
 - 최소 4명 이상 접속
 - 서버 관리자가 게임 시작
 
 **2단계: 밤 (NIGHT) - 30초**
+
 - 마피아: 제거할 대상 선택
 - 의사: 보호할 대상 선택
 - 경찰: 조사할 대상 선택
@@ -114,26 +121,31 @@ done
 - 시민: 대기
 
 **3단계: 밤 결과 발표**
+
 - 마피아에게 제거된 사람 공개
 - 의사 보호 성공 시 생존
 - 군인 방어막으로 생존 가능
 
 **4단계: 낮 (DAY) - 30초**
+
 - 자유 토론
 - 의심되는 사람 찾기
 - 기자 특종 발표 (해당 시)
 - 성직자 부활 (해당 시)
 
 **5단계: 투표 (VOTE) - 20초**
+
 - 의심되는 사람에게 투표
 - 최다 득표자 제거
 - 동점 시 아무도 제거 안 됨
 
 **6단계: 최후의 반론 - 15초**
+
 - 제거 대상자의 변론
 - 찬반 투표로 최종 결정
 
 **7단계: 승리 조건 확인**
+
 - 시민 팀 승리: 모든 마피아 제거
 - 마피아 팀 승리: 마피아 수 ≥ 시민 수
 
@@ -142,12 +154,14 @@ done
 ### 플레이 팁
 
 **시민 팀 전략:**
+
 - 경찰 정보 신중히 판단
 - 투표 패턴 분석
 - 행동 패턴 관찰
 - 정보 공유
 
 **마피아 팀 전략:**
+
 - 시민처럼 자연스럽게 행동
 - 능력자(의사/경찰) 우선 제거
 - 다른 플레이어에게 의심 유도
@@ -160,16 +174,19 @@ done
 ### 마피아 팀
 
 **마피아 (MAFIA)**
+
 - 밤에 시민 한 명 제거
 - 마피아 수 ≥ 시민 수 시 승리
 - 4명: 1명 / 5명 이상: 2명
 
 **스파이 (SPY)**
+
 - 밤에 한 명의 직업 조사
 - 마피아 조사 시 접선하여 마피아 팀 합류
 - 군인에게 정체 노출
 
 **마담 (MADAME)**
+
 - 낮 투표로 플레이어 유혹
 - 유혹당한 플레이어는 밤 능력 사용 불가
 - 마피아 유혹 시 접선하여 마피아 팀 합류
@@ -177,41 +194,51 @@ done
 ### 시민 팀
 
 **의사 (DOCTOR)**
+
 - 밤에 한 명 보호
 - 마피아 공격 방어
 
 **경찰 (POLICE)**
+
 - 밤에 한 명 조사
 - 마피아 여부 확인
 
 **정치인 (POLITICIAN)**
+
 - 투표로 죽지 않음
 - 2표 행사
 
 **군인 (SOLDIER)**
+
 - 마피아 공격 1회 방어
 - 스파이 조사 시 스파이 정체 파악
 
 **영매 (SHAMAN)**
+
 - 죽은 자 대화 확인
 - 한 명 성불시켜 직업 확인
 
 **기자 (REPORTER)**
+
 - 2~8일차 밤에 한 명 취재
 - 다음 날 직업 공개
 
 **도굴꾼 (GHOUL)**
+
 - 첫날 밤 마피아 희생자의 직업 획득
 
 **건달 (GANGSTER)**
+
 - 밤마다 한 명 선택
 - 다음 날 투표 금지
 
 **성직자 (PRIEST)**
+
 - 게임 중 1회 부활 능력
 - 성불된 플레이어는 부활 불가
 
 **시민 (CITIZEN)**
+
 - 특별 능력 없음
 - 투표로 마피아 찾기
 
@@ -224,11 +251,13 @@ done
 낮 시간에 익명 쪽지 전송 가능
 
 **사용법:**
+
 ```
 /whisper [대상] [내용]
 ```
 
 **특징:**
+
 - 익명 전송
 - 시간당 최대 10개 제한
 - 200자 제한
@@ -238,6 +267,7 @@ done
 게임 시작 전 30초 대기실
 
 **기능:**
+
 - 준비 상태 확인
 - 역할 선호도 설정 (최대 3개)
 - 자유 채팅
@@ -248,6 +278,7 @@ done
 플레이어 기록 추적 및 업적
 
 **명령어:**
+
 ```
 /stats              - 내 통계
 /leaderboard        - 리더보드
@@ -255,6 +286,7 @@ done
 ```
 
 **업적 목록:**
+
 - 첫 승리
 - 완벽한 마피아
 - 생존왕 (10게임 연속)
@@ -268,11 +300,13 @@ done
 투표 진행 상황 실시간 표시
 
 **기능:**
+
 - 득표수 바 차트
 - 투표율 계산
 - 공개/익명 모드
 
 **예시:**
+
 ```
 플레이어1: ████████░░ 8표
 플레이어2: ███████░░░ 7표
@@ -284,6 +318,7 @@ done
 모든 역할의 상세 설명
 
 **명령어:**
+
 ```
 /guide              - 내 역할 가이드
 /guide MAFIA        - 마피아 가이드
@@ -296,6 +331,7 @@ done
 이모지로 감정 표현
 
 **명령어:**
+
 ```
 /emotion THUMBS_UP          - 👍
 /emotion SHOCKED Player1    - Player1에게 😱
@@ -303,6 +339,7 @@ done
 ```
 
 **이모지 종류:**
+
 - 긍정: 👍 👏 ❤️ 😄 🎉
 - 부정: 👎 😡 😢 💔
 - 중립: 🤔 😐 🤷
@@ -313,6 +350,7 @@ done
 연결 끊김 시 30초 내 재접속 가능
 
 **기능:**
+
 - 게임 상태 자동 저장
 - 역할, 정보 복원
 - 채팅 히스토리 제공
@@ -323,10 +361,12 @@ done
 시즌별 특별 이벤트
 
 **크리스마스 이벤트 (12월):**
+
 - 산타가 랜덤 플레이어에게 2표 스킬 선물
 - 크리스마스 테마 메시지
 
 **향후 추가 예정:**
+
 - 할로윈 (10월): 뱀파이어, 늑대인간
 - 설날 (1-2월): 점쟁이, 조상님
 - 여름 (7-8월): 라이프가드, 상어
@@ -387,18 +427,23 @@ mvn clean package -DskipTests
 ### 디자인 패턴
 
 **Singleton Pattern**
+
 - 모든 매니저 클래스
 
 **Observer Pattern**
+
 - 이벤트 리스너 시스템
 
 **Strategy Pattern**
+
 - 역할별 전략
 
 **Builder Pattern**
+
 - 복잡한 객체 생성
 
 **Memento Pattern**
+
 - 재접속 상태 저장
 
 ### 새 기능 추가 방법
@@ -408,14 +453,14 @@ mvn clean package -DskipTests
 ```java
 public class CustomManager {
     private static CustomManager instance;
-    
+
     public static synchronized CustomManager getInstance() {
         if (instance == null) {
             instance = new CustomManager();
         }
         return instance;
     }
-    
+
     private CustomManager() {
         // 초기화
     }
@@ -427,7 +472,7 @@ public class CustomManager {
 ```java
 public class MafiaGameServer {
     private CustomManager customManager;
-    
+
     private void initializeManagers() {
         customManager = CustomManager.getInstance();
     }
@@ -451,6 +496,7 @@ EventModeManager.getInstance().registerEvent(newEvent);
 GitHub Actions 자동 빌드 및 릴리스
 
 **릴리스 방법:**
+
 ```bash
 git tag -a v1.0.0 -m "Release version 1.0.0"
 git push origin v1.0.0
@@ -470,6 +516,7 @@ git push origin v1.0.0
 ### 프로토콜
 
 **서버 → 클라이언트:**
+
 ```
 ROLE:역할명                    - 역할 배정
 PHASE:단계명                   - 게임 단계 변경
@@ -479,6 +526,7 @@ SYSTEM: 메시지                 - 시스템 메시지
 ```
 
 **클라이언트 → 서버:**
+
 ```
 /login 이름                    - 로그인
 NIGHT_ACTION:역할:대상         - 밤 행동
@@ -486,6 +534,33 @@ VOTE:대상                      - 투표
 [이름] 메시지                  - 채팅
 /exit                          - 종료
 ```
+
+---
+
+## ✨ 트러블슈팅
+
+### 자주 발생하는 문제
+
+**1. Port binding failed 오류**
+서버 실행 시 포트가 이미 사용 중일 때 발생합니다.
+
+**해결 방법:**
+
+```bash
+# 30000 포트를 사용하는 프로세스 찾기
+lsof -i :30000
+
+# 해당 PID 종료 (예: PID가 12345인 경우)
+kill -9 12345
+```
+
+**2. 사운드 재생 불가**
+게임 사운드가 들리지 않는 경우
+
+**확인 사항:**
+
+- 스피커 볼륨 확인
+- `src/main/resources/GameSound` 폴더 존재 여부 확인
 
 ---
 
