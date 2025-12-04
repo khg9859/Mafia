@@ -185,6 +185,11 @@ public class MafiaGameClientView extends JFrame {
      */
     private Map<String, String> roleImageMap;
 
+    /**
+     * 밝혀진 역할 정보 (플레이어 이름 -> 역할)
+     */
+    private Map<String, String> revealedRoles;
+
     // ========================================
     // 사운드 관련 변수
     // ========================================
@@ -223,6 +228,7 @@ public class MafiaGameClientView extends JFrame {
     private void initializeDataStructures() {
         roleImageMap = new HashMap<>();
         playerMap = new HashMap<>();
+        revealedRoles = new HashMap<>();
         initializeRoleImageMap();
     }
 
@@ -618,9 +624,8 @@ public class MafiaGameClientView extends JFrame {
 
                     // 그라데이션 배경
                     GradientPaint gradient = new GradientPaint(
-                        0, 0, new Color(45, 45, 45),
-                        0, getHeight(), new Color(30, 30, 30)
-                    );
+                            0, 0, new Color(45, 45, 45),
+                            0, getHeight(), new Color(30, 30, 30));
                     g2d.setPaint(gradient);
                     g2d.fillRoundRect(0, 0, getWidth(), getHeight(), 20, 20);
 
@@ -644,9 +649,8 @@ public class MafiaGameClientView extends JFrame {
 
             // 제목 그림자 효과
             titleLabel.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createMatteBorder(0, 0, 1, 0, new Color(255, 215, 0, 100)),
-                BorderFactory.createEmptyBorder(5, 0, 5, 0)
-            ));
+                    BorderFactory.createMatteBorder(0, 0, 1, 0, new Color(255, 215, 0, 100)),
+                    BorderFactory.createEmptyBorder(5, 0, 5, 0)));
             agreeDisagreePanel.add(titleLabel);
 
             // 찬성 버튼 (고급 디자인)
@@ -701,9 +705,8 @@ public class MafiaGameClientView extends JFrame {
 
                 // 그라데이션 배경
                 GradientPaint gradient = new GradientPaint(
-                    0, 0, getBackground(),
-                    0, getHeight(), getBackground().darker()
-                );
+                        0, 0, getBackground(),
+                        0, getHeight(), getBackground().darker());
                 g2d.setPaint(gradient);
                 g2d.fillRoundRect(0, 0, getWidth(), getHeight(), 15, 15);
 
@@ -793,11 +796,10 @@ public class MafiaGameClientView extends JFrame {
                     int finalOffset = offset;
                     SwingUtilities.invokeLater(() -> {
                         button.setBounds(
-                            button.getX() + finalOffset,
-                            button.getY() + finalOffset,
-                            button.getWidth() - finalOffset * 2,
-                            button.getHeight() - finalOffset * 2
-                        );
+                                button.getX() + finalOffset,
+                                button.getY() + finalOffset,
+                                button.getWidth() - finalOffset * 2,
+                                button.getHeight() - finalOffset * 2);
                     });
                     Thread.sleep(20);
                 }
@@ -808,11 +810,10 @@ public class MafiaGameClientView extends JFrame {
                     int finalOffset = offset;
                     SwingUtilities.invokeLater(() -> {
                         button.setBounds(
-                            button.getX() - finalOffset,
-                            button.getY() - finalOffset,
-                            button.getWidth() + finalOffset * 2,
-                            button.getHeight() + finalOffset * 2
-                        );
+                                button.getX() - finalOffset,
+                                button.getY() - finalOffset,
+                                button.getWidth() + finalOffset * 2,
+                                button.getHeight() + finalOffset * 2);
                     });
                     Thread.sleep(20);
                 }
@@ -873,7 +874,13 @@ public class MafiaGameClientView extends JFrame {
                     String playerName = isDead ? playerInfo.substring(6) : playerInfo;
 
                     // 다른 플레이어의 역할은 알 수 없으므로 DEFAULT 사용
-                    String displayRole = playerName.equals(UserName) ? myRole : "DEFAULT";
+                    // 단, 이미 밝혀진 역할이 있다면 그 역할을 사용
+                    String displayRole = "DEFAULT";
+                    if (playerName.equals(UserName)) {
+                        displayRole = myRole;
+                    } else if (revealedRoles.containsKey(playerName)) {
+                        displayRole = revealedRoles.get(playerName);
+                    }
 
                     playerCards[i].setPlayer(playerName, displayRole, !isDead);
 
@@ -1428,6 +1435,9 @@ public class MafiaGameClientView extends JFrame {
                 for (PlayerCard card : playerCards) {
                     if (playerName.equals(card.getPlayerName())) {
                         card.setPlayer(playerName, role, true);
+
+                        // 밝혀진 역할 저장 (영구 지속)
+                        revealedRoles.put(playerName, role);
                         break;
                     }
                 }

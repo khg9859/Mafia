@@ -836,24 +836,24 @@ public class MafiaGameServer extends JFrame {
     private void checkAndApplyEventMode() {
         java.time.LocalDate now = java.time.LocalDate.now();
         int currentMonth = now.getMonthValue();
-        
+
         // 크리스마스 이벤트 (12월)
         if (currentMonth == 12) {
             activateChristmasEvent();
         }
-        
+
         // TODO: 다른 이벤트 추가 예시
         // else if (currentMonth == 10) {
-        //     activateHalloweenEvent();
+        // activateHalloweenEvent();
         // }
         // else if (currentMonth >= 1 && currentMonth <= 2) {
-        //     activateLunarNewYearEvent();
+        // activateLunarNewYearEvent();
         // }
         // else if (currentMonth >= 7 && currentMonth <= 8) {
-        //     activateSummerEvent();
+        // activateSummerEvent();
         // }
     }
-    
+
     /**
      * 크리스마스 이벤트 활성화
      * 산타가 랜덤 플레이어에게 2표 스킬을 선물합니다.
@@ -861,7 +861,7 @@ public class MafiaGameServer extends JFrame {
     private void activateChristmasEvent() {
         christmasEventActive = true;
         AppendText("크리스마스 이벤트가 활성화되었습니다!");
-        
+
         WriteAll("SYSTEM: \n");
         WriteAll("SYSTEM: 🎄🎅✨ 메리 크리스마스! ✨🎅🎄\n");
         WriteAll("SYSTEM: \n");
@@ -1345,8 +1345,6 @@ public class MafiaGameServer extends JFrame {
         }).start();
     }
 
-
-
     /**
      * 밤 행동 처리
      * 마피아의 공격, 의사의 보호, 경찰의 조사 등을 처리합니다.
@@ -1620,7 +1618,9 @@ public class MafiaGameServer extends JFrame {
      * @param targetUser 대상 사용자
      */
     private void reviveAsOriginalRole(UserService targetUser) {
+        targetUser.WriteOne("ROLE:" + targetUser.role + "\n");
         targetUser.WriteOne("SYSTEM: 성직자에 의해 부활했습니다!\n");
+        targetUser.WriteOne("SYSTEM: " + getRoleDescription(targetUser.role) + "\n");
         targetUser.WriteOne("DEAD:false\n");
     }
 
@@ -1670,7 +1670,7 @@ public class MafiaGameServer extends JFrame {
             }
         }
         voteTracker.startVoting(aliveVoters, aliveCandidates, 20,
-                               mafia.game.features.VoteTracker.VoteMode.PUBLIC);
+                mafia.game.features.VoteTracker.VoteMode.PUBLIC);
 
         // 로그 및 클라이언트 알림
         AppendText("===== 투표 시작 =====");
@@ -1741,8 +1741,6 @@ public class MafiaGameServer extends JFrame {
             }
         }).start();
     }
-
-
 
     /**
      * 투표 결과 처리
@@ -2030,8 +2028,6 @@ public class MafiaGameServer extends JFrame {
         // 다음 밤으로
         scheduleNextNightPhase();
     }
-
-
 
     /**
      * 다음 밤 페이즈 예약
@@ -2659,7 +2655,7 @@ public class MafiaGameServer extends JFrame {
                     String targetRole = targetUser.role;
 
                     // 스파이 조사 사운드 재생
-                    WriteOne("SOUND:/GameSound/simin/police_choose.wav");
+                    WriteOne("SOUND:/GameSound/Citizen/police.wav");
 
                     WriteOne("SYSTEM: [" + target + "]님의 직업은 [" + targetRole + "]입니다!\n");
                     AppendText("스파이 " + UserName + "이 " + target + " 조사 -> " + targetRole);
@@ -2918,8 +2914,8 @@ public class MafiaGameServer extends JFrame {
 
                 // 모든 살아있는 플레이어에게 브로드캐스트
                 String broadcastMsg = target != null
-                    ? "EMOTION: " + UserName + "님이 " + target + "님에게 " + emotionEmoji + " " + emotionName + "\n"
-                    : "EMOTION: " + UserName + "님이 " + emotionEmoji + " " + emotionName + "\n";
+                        ? "EMOTION: " + UserName + "님이 " + target + "님에게 " + emotionEmoji + " " + emotionName + "\n"
+                        : "EMOTION: " + UserName + "님이 " + emotionEmoji + " " + emotionName + "\n";
 
                 for (UserService user : UserVec) {
                     if (aliveStatus.get(user.UserName) != null && aliveStatus.get(user.UserName)) {
@@ -2928,7 +2924,7 @@ public class MafiaGameServer extends JFrame {
                 }
 
                 AppendText("[감정] " + UserName + ": " + emotionEmoji + " " + emotionName +
-                          (target != null ? " -> " + target : ""));
+                        (target != null ? " -> " + target : ""));
             } else {
                 WriteOne("SYSTEM: " + result.getMessage() + "\n");
             }
@@ -2988,8 +2984,6 @@ public class MafiaGameServer extends JFrame {
                 AppendText(UserName + " 통계 조회: " + targetPlayer);
             }
         }
-
-
 
         /**
          * 도움말 명령어 처리
@@ -3117,8 +3111,8 @@ public class MafiaGameServer extends JFrame {
 
                 // 모든 살아있는 플레이어에게 브로드캐스트
                 String broadcastMsg = target != null
-                    ? "💫 " + UserName + "님이 " + target + "님에게 " + emotionEmoji + " " + emotionDispName + "\n"
-                    : "💫 " + UserName + "님이 " + emotionEmoji + " " + emotionDispName + "\n";
+                        ? "💫 " + UserName + "님이 " + target + "님에게 " + emotionEmoji + " " + emotionDispName + "\n"
+                        : "💫 " + UserName + "님이 " + emotionEmoji + " " + emotionDispName + "\n";
 
                 for (UserService user : UserVec) {
                     if (aliveStatus.get(user.UserName) != null && aliveStatus.get(user.UserName)) {
@@ -3127,7 +3121,7 @@ public class MafiaGameServer extends JFrame {
                 }
 
                 AppendText("[감정] " + UserName + ": " + emotionEmoji + " " + emotionDispName +
-                          (target != null ? " -> " + target : ""));
+                        (target != null ? " -> " + target : ""));
             } else {
                 WriteOne("SYSTEM: " + result.getMessage() + "\n");
             }
@@ -3172,27 +3166,47 @@ public class MafiaGameServer extends JFrame {
          * 한글 감정 이름을 영어 ID로 변환
          */
         private String getEmotionIdFromName(String name) {
-            switch(name) {
-                case "좋아요": return "THUMBS_UP";
-                case "싫어요": return "THUMBS_DOWN";
-                case "하트": return "HEART";
-                case "웃음": return "LAUGH";
-                case "울음": return "CRY";
-                case "화남": return "ANGRY";
-                case "충격": return "SHOCKED";
-                case "생각": return "THINK";
-                case "박수": return "CLAP";
-                case "불": return "FIRE";
-                case "해골": return "SKULL";
-                case "유령": return "GHOST";
-                case "탐정": return "DETECTIVE";
-                case "칼": return "KNIFE";
-                case "방패": return "SHIELD";
-                case "십자가": return "CROSS";
-                case "물음표": return "QUESTION";
-                case "느낌표": return "EXCLAMATION";
-                case "잠": return "ZZZ";
-                default: return null;
+            switch (name) {
+                case "좋아요":
+                    return "THUMBS_UP";
+                case "싫어요":
+                    return "THUMBS_DOWN";
+                case "하트":
+                    return "HEART";
+                case "웃음":
+                    return "LAUGH";
+                case "울음":
+                    return "CRY";
+                case "화남":
+                    return "ANGRY";
+                case "충격":
+                    return "SHOCKED";
+                case "생각":
+                    return "THINK";
+                case "박수":
+                    return "CLAP";
+                case "불":
+                    return "FIRE";
+                case "해골":
+                    return "SKULL";
+                case "유령":
+                    return "GHOST";
+                case "탐정":
+                    return "DETECTIVE";
+                case "칼":
+                    return "KNIFE";
+                case "방패":
+                    return "SHIELD";
+                case "십자가":
+                    return "CROSS";
+                case "물음표":
+                    return "QUESTION";
+                case "느낌표":
+                    return "EXCLAMATION";
+                case "잠":
+                    return "ZZZ";
+                default:
+                    return null;
             }
         }
 
@@ -3252,8 +3266,7 @@ public class MafiaGameServer extends JFrame {
                 hasVotedThisRound.add(UserName);
 
                 // VoteTracker에 등록 (실시간 추적)
-                mafia.game.features.VoteTracker.VoteCastResult voteResult =
-                    voteTracker.castVote(UserName, target);
+                mafia.game.features.VoteTracker.VoteCastResult voteResult = voteTracker.castVote(UserName, target);
 
                 AppendText(UserName + "(" + role + ") -> " + target + " 투표 (" + votes + "표)" + voteReason);
                 WriteOne("SYSTEM: [" + target + "]님에게 투표했습니다." + voteReason + "\n");
@@ -3262,7 +3275,7 @@ public class MafiaGameServer extends JFrame {
                 int currentVotes = voteTracker.getVoteCount(target);
                 double voteRate = voteTracker.calculateVoteRate();
                 WriteAll(String.format("SYSTEM: 💫 %s님이 투표했습니다. (참여율: %.0f%%)\n",
-                                      UserName, voteRate * 100));
+                        UserName, voteRate * 100));
 
                 // 마담의 유혹 능력 (투표 시 대상 유혹 -> 찬반투표 때 알림)
                 if (role.equals("MADAME")) {
@@ -3330,8 +3343,10 @@ public class MafiaGameServer extends JFrame {
             // 역할 가이드
             else if (lowerMsg.contains("/guide") || msg.contains("/가이드") || msg.contains("/역할")) {
                 int cmdIndex = lowerMsg.indexOf("/guide");
-                if (cmdIndex == -1) cmdIndex = msg.indexOf("/가이드");
-                if (cmdIndex == -1) cmdIndex = msg.indexOf("/역할");
+                if (cmdIndex == -1)
+                    cmdIndex = msg.indexOf("/가이드");
+                if (cmdIndex == -1)
+                    cmdIndex = msg.indexOf("/역할");
                 String command = msg.substring(cmdIndex);
                 handleGuideCommand(command);
                 return;
@@ -3339,8 +3354,10 @@ public class MafiaGameServer extends JFrame {
             // 통계
             else if (lowerMsg.contains("/stats") || msg.contains("/통계") || msg.contains("/전적")) {
                 int cmdIndex = lowerMsg.indexOf("/stats");
-                if (cmdIndex == -1) cmdIndex = msg.indexOf("/통계");
-                if (cmdIndex == -1) cmdIndex = msg.indexOf("/전적");
+                if (cmdIndex == -1)
+                    cmdIndex = msg.indexOf("/통계");
+                if (cmdIndex == -1)
+                    cmdIndex = msg.indexOf("/전적");
                 String command = msg.substring(cmdIndex);
                 handleStatsCommand(command);
                 return;
@@ -3348,8 +3365,10 @@ public class MafiaGameServer extends JFrame {
             // 감정 표현
             else if (lowerMsg.contains("/emotion") || msg.contains("/감정") || msg.contains("/이모지")) {
                 int cmdIndex = lowerMsg.indexOf("/emotion");
-                if (cmdIndex == -1) cmdIndex = msg.indexOf("/감정");
-                if (cmdIndex == -1) cmdIndex = msg.indexOf("/이모지");
+                if (cmdIndex == -1)
+                    cmdIndex = msg.indexOf("/감정");
+                if (cmdIndex == -1)
+                    cmdIndex = msg.indexOf("/이모지");
                 String command = msg.substring(cmdIndex);
                 handleEmotionCommand(command);
                 return;
@@ -3553,8 +3572,6 @@ public class MafiaGameServer extends JFrame {
     // ========================================
     // AI 플레이어 시스템
     // ========================================
-
-
 
     /**
      * 마피아 팀 정보 공유
