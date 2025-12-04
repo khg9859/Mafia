@@ -256,7 +256,7 @@ public class MafiaGameClientView extends JFrame {
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setBounds(100, 100, 1200, 700);
 
-        contentPane = new JPanel();
+        contentPane = new GameBackgroundPanel();
         contentPane.setBackground(new Color(30, 30, 30));
         contentPane.setBorder(new EmptyBorder(0, 0, 0, 0));
         setContentPane(contentPane);
@@ -1492,6 +1492,53 @@ public class MafiaGameClientView extends JFrame {
             this.name = name;
             this.role = role;
             this.alive = alive;
+        }
+    }
+
+    /**
+     * 게임 화면 배경 패널
+     *
+     * 게임 배경 이미지를 표시하는 커스텀 패널입니다.
+     */
+    class GameBackgroundPanel extends JPanel {
+        private Image backgroundImage;
+
+        /**
+         * 게임 배경 패널 생성자
+         *
+         * /info/game_background.png 또는 .jpg 파일을 로드합니다.
+         * 파일이 없으면 기본 배경색으로 표시됩니다.
+         */
+        public GameBackgroundPanel() {
+            try {
+                // 게임 배경 이미지 우선 시도
+                java.net.URL bgURL = getClass().getResource("/info/game_background.png");
+
+                // PNG가 없으면 JPG 시도
+                if (bgURL == null) {
+                    bgURL = getClass().getResource("/info/game_background.jpg");
+                }
+
+                // 게임 배경이 없으면 기본 배경 사용
+                if (bgURL == null) {
+                    bgURL = getClass().getResource("/info/background.png");
+                }
+
+                if (bgURL != null) {
+                    backgroundImage = new javax.swing.ImageIcon(bgURL).getImage();
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            super.paintComponent(g);
+            if (backgroundImage != null) {
+                // 배경 이미지를 패널 크기에 맞게 그리기
+                g.drawImage(backgroundImage, 0, 0, getWidth(), getHeight(), this);
+            }
         }
     }
 }

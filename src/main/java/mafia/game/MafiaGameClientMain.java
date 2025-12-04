@@ -49,7 +49,7 @@ public class MafiaGameClientMain extends JFrame {
      *
      * 배포 전에는 반드시 false로 변경할 것!
      */
-    private static final boolean TEST_MODE = true;
+    private static final boolean TEST_MODE = false;
 
     // ========================================
     // UI 컴포넌트
@@ -141,7 +141,7 @@ public class MafiaGameClientMain extends JFrame {
     private void initializeFrame() {
         setTitle("Mafia Game - Login");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setBounds(100, 100, 450, 550);
+        setBounds(100, 100, 820, 585);
     }
 
     /**
@@ -408,7 +408,19 @@ public class MafiaGameClientMain extends JFrame {
          */
         public BackgroundPanel() {
             try {
-                java.net.URL bgURL = getClass().getResource("/info/background.png");
+                // 로비 배경 이미지 우선 시도
+                java.net.URL bgURL = getClass().getResource("/info/lobby_background.png");
+
+                // PNG가 없으면 JPG 시도
+                if (bgURL == null) {
+                    bgURL = getClass().getResource("/info/lobby_background.jpg");
+                }
+
+                // 로비 배경이 없으면 기본 배경 사용
+                if (bgURL == null) {
+                    bgURL = getClass().getResource("/info/background.png");
+                }
+
                 if (bgURL != null) {
                     backgroundImage = new javax.swing.ImageIcon(bgURL).getImage();
                 }

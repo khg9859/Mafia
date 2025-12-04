@@ -35,6 +35,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.Set;
 import java.util.Vector;
 
@@ -51,6 +52,17 @@ import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.SwingConstants;
 import javax.swing.border.EmptyBorder;
+
+// 신규 기능 매니저 임포트
+import mafia.game.features.*;
+import mafia.game.models.*;
+import mafia.game.ai.*;
+import mafia.game.events.*;
+import mafia.game.features.WhisperManager.WhisperResult;
+import mafia.game.features.EmotionManager.EmotionResult;
+import mafia.game.features.VoteTracker.VoteMode;
+import mafia.game.features.ReconnectionManager.PlayerGameState;
+import mafia.game.features.ReconnectionManager.ReconnectionResult;
 
 /**
  * MafiaGameServer 메인 클래스
@@ -188,6 +200,16 @@ public class MafiaGameServer extends JFrame {
     private Set<String> hasVotedThisRound = new HashSet<>();
 
     /**
+     * 크리스마스 이벤트: 산타의 선물을 받은 플레이어 (2표 스킬)
+     */
+    private String santaGiftReceiver = null;
+
+    /**
+     * 크리스마스 이벤트 활성화 여부
+     */
+    private boolean christmasEventActive = false;
+
+    /**
      * 마담에게 유혹당한 플레이어 (이름 -> 유혹 여부)
      */
     private Map<String, Boolean> seduced = new HashMap<>();
@@ -322,6 +344,50 @@ public class MafiaGameServer extends JFrame {
     private Clip currentClip;
 
     // ========================================
+    // 신규 기능 매니저 인스턴스
+    // ========================================
+
+    /**
+     * 쪽지 시스템 매니저
+     */
+    private WhisperManager whisperManager;
+
+    /**
+     * 로비 시스템 매니저
+     */
+    private LobbyManager lobbyManager;
+
+    /**
+     * 통계 및 업적 매니저
+     */
+    private StatisticsManager statisticsManager;
+
+    /**
+     * 투표 추적 매니저
+     */
+    private VoteTracker voteTracker;
+
+    /**
+     * 역할 가이드 매니저
+     */
+    private RoleGuideManager roleGuideManager;
+
+    /**
+     * 감정 표현 매니저
+     */
+    private EmotionManager emotionManager;
+
+    /**
+     * 재접속 매니저
+     */
+    private ReconnectionManager reconnectionManager;
+
+    /**
+     * 이벤트 모드 매니저
+     */
+    private EventModeManager eventModeManager;
+
+    // ========================================
     // 메인 메소드
     // ========================================
 
@@ -357,6 +423,33 @@ public class MafiaGameServer extends JFrame {
         createHeaderPanel();
         createCenterPanel();
         createControlPanel();
+        initializeManagers();
+    }
+
+    /**
+     * 신규 기능 매니저들을 초기화합니다.
+     * Singleton 인스턴스를 가져와 이벤트 리스너를 설정합니다.
+     */
+    private void initializeManagers() {
+        // 매니저 인스턴스 초기화
+        whisperManager = WhisperManager.getInstance();
+        lobbyManager = LobbyManager.getInstance();
+        statisticsManager = StatisticsManager.getInstance();
+        voteTracker = VoteTracker.getInstance();
+        roleGuideManager = RoleGuideManager.getInstance();
+        emotionManager = EmotionManager.getInstance();
+        reconnectionManager = ReconnectionManager.getInstance();
+        eventModeManager = EventModeManager.getInstance();
+
+        AppendText("[System] 신규 기능 매니저 초기화 완료\n");
+        AppendText("[System] - 쪽지 시스템\n");
+        AppendText("[System] - 로비 시스템\n");
+        AppendText("[System] - 통계 및 업적\n");
+        AppendText("[System] - 실시간 투표 추적\n");
+        AppendText("[System] - 역할 가이드\n");
+        AppendText("[System] - 감정 표현\n");
+        AppendText("[System] - 재접속 지원\n");
+        AppendText("[System] - 이벤트 모드\n");
     }
 
     /**
@@ -706,6 +799,9 @@ public class MafiaGameServer extends JFrame {
         AppendText("===== 게임 시작! =====");
         AppendText("참가자 수: " + UserVec.size());
 
+        // 이벤트 모드 확인 및 적용
+        checkAndApplyEventMode();
+
         // 역할 배정
         assignRoles();
 
@@ -721,6 +817,66 @@ public class MafiaGameServer extends JFrame {
 
         // 2초 후 밤 페이즈 시작
         scheduleNightPhaseStart();
+    }
+
+    /**
+     * 이벤트 모드 확인 및 적용
+     */
+    private void checkAndApplyEventMode() {
+        // 크리스마스 시즌 확인 (12월)
+        java.time.LocalDate now = java.time.LocalDate.now();
+        if (now.getMonthValue() == 12) {
+            christmasEventActive = true;
+            AppendText("🎄 크리스마스 이벤트가 활성화되었습니다!");
+            WriteAll("SYSTEM: \n");
+            WriteAll("SYSTEM: 🎄🎅✨ 메리 크리스마스! ✨🎅🎄\n");
+            WriteAll("SYSTEM: \n");
+            WriteAll("SYSTEM: 곧 크리스마스입니다, 여러분!\n");
+            WriteAll("SYSTEM: 산타가 특별한 선물을 가져왔습니다...\n");
+            WriteAll("SYSTEM: \n");
+
+            // 3초 후 산타의 선물 발표
+            new Thread(() -> {
+                try {
+                    Thread.sleep(3000);
+                    giveSantaGift();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }).start();
+        }
+    }
+
+    /**
+     * 산타의 선물 - 랜덤 플레이어에게 2표 스킬 부여
+     */
+    private void giveSantaGift() {
+        if (!christmasEventActive || UserVec.isEmpty()) {
+            return;
+        }
+
+        // 랜덤 플레이어 선택
+        Random rand = new Random();
+        UserService luckyPlayer = UserVec.get(rand.nextInt(UserVec.size()));
+        santaGiftReceiver = luckyPlayer.UserName;
+
+        AppendText("🎁 산타가 " + santaGiftReceiver + "님에게 선물을 주었습니다! (2표 스킬)");
+
+        // 모든 플레이어에게 알림
+        WriteAll("SYSTEM: \n");
+        WriteAll("SYSTEM: 🎅 호호호! 산타입니다! 🎅\n");
+        WriteAll("SYSTEM: 🎁 [" + santaGiftReceiver + "]님에게 특별한 선물을 드립니다!\n");
+        WriteAll("SYSTEM: \n");
+        WriteAll("SYSTEM: 💫 선물 내용: 투표 시 2표로 인정됩니다! 💫\n");
+        WriteAll("SYSTEM: \n");
+
+        // 선물받은 플레이어에게 특별 메시지
+        luckyPlayer.WriteOne("SYSTEM: \n");
+        luckyPlayer.WriteOne("SYSTEM: 🎄🎁 축하합니다! 🎁🎄\n");
+        luckyPlayer.WriteOne("SYSTEM: 산타가 당신을 선택했습니다!\n");
+        luckyPlayer.WriteOne("SYSTEM: 당신의 투표는 2표로 카운트됩니다!\n");
+        luckyPlayer.WriteOne("SYSTEM: 이 선물을 현명하게 사용하세요...\n");
+        luckyPlayer.WriteOne("SYSTEM: \n");
     }
 
     /**
@@ -1468,6 +1624,18 @@ public class MafiaGameServer extends JFrame {
         // 살아있는 모든 플레이어를 투표 대상으로 초기화
         initializeVoteCounts();
 
+        // VoteTracker 시작 - 실시간 투표 추적
+        Set<String> aliveVoters = new HashSet<>();
+        Set<String> aliveCandidates = new HashSet<>();
+        for (Map.Entry<String, Boolean> entry : aliveStatus.entrySet()) {
+            if (entry.getValue()) {
+                aliveVoters.add(entry.getKey());
+                aliveCandidates.add(entry.getKey());
+            }
+        }
+        voteTracker.startVoting(aliveVoters, aliveCandidates, 20,
+                               mafia.game.features.VoteTracker.VoteMode.PUBLIC);
+
         // 로그 및 클라이언트 알림
         AppendText("===== 투표 시작 =====");
         WriteAll("PHASE:VOTE\n");
@@ -1476,6 +1644,9 @@ public class MafiaGameServer extends JFrame {
         WriteAll("SYSTEM: 제거할 플레이어를 투표하세요! (20초)\n");
 
         sendAlivePlayerList();
+
+        // 투표 진행 상황 업데이트 스레드 시작
+        startVoteProgressUpdates();
 
         // 20초 후 투표 결과 처리
         scheduleVotePhaseEnd();
@@ -1490,6 +1661,34 @@ public class MafiaGameServer extends JFrame {
                 voteCount.put(player, 0);
             }
         }
+    }
+
+    /**
+     * 투표 진행 상황 실시간 업데이트
+     */
+    private void startVoteProgressUpdates() {
+        new Thread(() -> {
+            try {
+                while (voteTracker.isActive() && gamePhase.equals("VOTE")) {
+                    Thread.sleep(3000); // 3초마다 업데이트
+
+                    // 투표 현황 브로드캐스트
+                    String stats = voteTracker.getStatistics();
+                    WriteAll("VOTE_PROGRESS:" + stats + "\n");
+
+                    // 투표 바 차트 전송
+                    List<String> barChart = voteTracker.getVoteBarChart(20);
+                    StringBuilder chartMsg = new StringBuilder();
+                    chartMsg.append("\n📊 실시간 투표 현황:\n");
+                    for (String bar : barChart) {
+                        chartMsg.append("  ").append(bar).append("\n");
+                    }
+                    WriteAll("SYSTEM:" + chartMsg.toString());
+                }
+            } catch (InterruptedException e) {
+                // 투표 종료
+            }
+        }).start();
     }
 
     /**
@@ -1512,6 +1711,21 @@ public class MafiaGameServer extends JFrame {
      */
     private void processVoteResult() {
         AppendText("=== 투표 결과 ===");
+
+        // VoteTracker 종료 및 최종 결과 브로드캐스트
+        mafia.game.features.VoteTracker.VoteResult trackerResult = voteTracker.endVoting();
+
+        // 최종 투표 현황 표시
+        List<String> finalChart = voteTracker.getVoteBarChart(30);
+        StringBuilder finalMsg = new StringBuilder();
+        finalMsg.append("\n" + "=".repeat(50) + "\n");
+        finalMsg.append("📊 최종 투표 결과\n");
+        finalMsg.append("=".repeat(50) + "\n");
+        for (String bar : finalChart) {
+            finalMsg.append(bar).append("\n");
+        }
+        finalMsg.append("=".repeat(50) + "\n");
+        WriteAll("SYSTEM:" + finalMsg.toString());
 
         // 최다 득표자 찾기
         VoteResult result = findMaxVotedPlayer();
@@ -2206,6 +2420,14 @@ public class MafiaGameServer extends JFrame {
                         handleVote(msg);
                     } else if (msg.startsWith("AGREE_DISAGREE:")) {
                         handleAgreeDisagreeVote(msg);
+                    } else if (msg.startsWith("WHISPER:")) {
+                        handleWhisper(msg);
+                    } else if (msg.startsWith("EMOTION:")) {
+                        handleEmotion(msg);
+                    } else if (msg.startsWith("/guide")) {
+                        handleGuideCommand(msg);
+                    } else if (msg.startsWith("/stats")) {
+                        handleStatsCommand(msg);
                     } else if (msg.contains("/exit")) {
                         logout();
                         return;
@@ -2574,6 +2796,364 @@ public class MafiaGameServer extends JFrame {
         }
 
         /**
+         * 쪽지 전송 처리 - 제거됨 (게임 밸런스를 위해)
+         * 프로토콜: WHISPER:RECEIVER:CONTENT
+         *
+         * @param msg 메시지
+         */
+        @Deprecated
+        private void handleWhisper(String msg) {
+            // WHISPER:RECEIVER:CONTENT 형식
+            String[] parts = msg.split(":", 3);
+            if (parts.length != 3) {
+                WriteOne("SYSTEM: 잘못된 쪽지 형식입니다.\n");
+                return;
+            }
+
+            String receiver = parts[1];
+            String content = parts[2];
+
+            // 낮 시간에만 쪽지 가능
+            if (!gamePhase.equals("DAY")) {
+                WriteOne("SYSTEM: 낮 시간에만 쪽지를 보낼 수 있습니다.\n");
+                return;
+            }
+
+            // 죽은 플레이어는 쪽지 불가
+            if (aliveStatus.get(UserName) != null && !aliveStatus.get(UserName)) {
+                WriteOne("SYSTEM: 죽은 플레이어는 쪽지를 보낼 수 없습니다.\n");
+                return;
+            }
+
+            // 쪽지 전송
+            WhisperResult result = whisperManager.sendWhisper(UserName, receiver, content);
+
+            if (result.isSuccess()) {
+                WriteOne("SYSTEM: " + receiver + "님에게 익명 쪽지를 보냈습니다.\n");
+
+                // 수신자에게 전송
+                for (UserService user : UserVec) {
+                    if (user.UserName.equals(receiver)) {
+                        user.WriteOne("WHISPER: 익명의 누군가: " + content + "\n");
+                        break;
+                    }
+                }
+
+                AppendText("[쪽지] " + UserName + " -> " + receiver + ": " + content);
+            } else {
+                WriteOne("SYSTEM: " + result.getMessage() + "\n");
+            }
+        }
+
+        /**
+         * 감정 표현 처리
+         * 프로토콜: EMOTION:EMOTION_ID:TARGET (TARGET은 선택사항)
+         *
+         * @param msg 메시지
+         */
+        private void handleEmotion(String msg) {
+            // EMOTION:EMOTION_ID:TARGET 형식
+            String[] parts = msg.split(":", 3);
+            if (parts.length < 2) {
+                WriteOne("SYSTEM: 잘못된 감정 표현 형식입니다.\n");
+                return;
+            }
+
+            String emotionId = parts[1];
+            String target = parts.length == 3 ? parts[2] : null;
+
+            // 죽은 플레이어는 감정 표현 불가
+            if (aliveStatus.get(UserName) != null && !aliveStatus.get(UserName)) {
+                WriteOne("SYSTEM: 죽은 플레이어는 감정 표현을 할 수 없습니다.\n");
+                return;
+            }
+
+            // 감정 표현
+            EmotionResult result = emotionManager.express(UserName, emotionId, target);
+
+            if (result.isSuccess()) {
+                String emotionEmoji = result.getEmotion().getIcon();
+                String emotionName = result.getEmotion().getName();
+
+                // 모든 살아있는 플레이어에게 브로드캐스트
+                String broadcastMsg = target != null
+                    ? "EMOTION: " + UserName + "님이 " + target + "님에게 " + emotionEmoji + " " + emotionName + "\n"
+                    : "EMOTION: " + UserName + "님이 " + emotionEmoji + " " + emotionName + "\n";
+
+                for (UserService user : UserVec) {
+                    if (aliveStatus.get(user.UserName) != null && aliveStatus.get(user.UserName)) {
+                        user.WriteOne(broadcastMsg);
+                    }
+                }
+
+                AppendText("[감정] " + UserName + ": " + emotionEmoji + " " + emotionName +
+                          (target != null ? " -> " + target : ""));
+            } else {
+                WriteOne("SYSTEM: " + result.getMessage() + "\n");
+            }
+        }
+
+        /**
+         * 역할 가이드 명령어 처리
+         * 프로토콜: /guide 또는 /guide ROLE
+         *
+         * @param msg 메시지
+         */
+        private void handleGuideCommand(String msg) {
+            String[] parts = msg.trim().split("\\s+");
+
+            if (parts.length == 1) {
+                // 자신의 역할 가이드
+                if (role != null && !role.isEmpty()) {
+                    String guide = roleGuideManager.getGuideText(role);
+                    WriteOne("GUIDE:\n" + guide + "\n");
+                    AppendText(UserName + " 역할 가이드 조회: " + role);
+                } else {
+                    WriteOne("SYSTEM: 역할이 배정되지 않았습니다.\n");
+                }
+            } else {
+                // 특정 역할 가이드
+                String requestedRole = parts[1].toUpperCase();
+                String guide = roleGuideManager.getGuideText(requestedRole);
+
+                if (guide.contains("찾을 수 없습니다")) {
+                    WriteOne("SYSTEM: 존재하지 않는 역할입니다.\n");
+                } else {
+                    WriteOne("GUIDE:\n" + guide + "\n");
+                    AppendText(UserName + " 역할 가이드 조회: " + requestedRole);
+                }
+            }
+        }
+
+        /**
+         * 통계 명령어 처리
+         * 프로토콜: /stats 또는 /stats PLAYER_NAME
+         *
+         * @param msg 메시지
+         */
+        private void handleStatsCommand(String msg) {
+            String[] parts = msg.trim().split("\\s+", 2);
+
+            if (parts.length == 1) {
+                // 자신의 통계
+                PlayerStatistics stats = statisticsManager.getStatistics(UserName);
+                WriteOne("STATS:\n" + stats.toString() + "\n");
+                AppendText(UserName + " 통계 조회");
+            } else {
+                // 특정 플레이어 통계
+                String targetPlayer = parts[1];
+                PlayerStatistics stats = statisticsManager.getStatistics(targetPlayer);
+                WriteOne("STATS [" + targetPlayer + "]:\n" + stats.toString() + "\n");
+                AppendText(UserName + " 통계 조회: " + targetPlayer);
+            }
+        }
+
+        /**
+         * 도움말 명령어 처리
+         * 프로토콜: /help 또는 /도움말
+         */
+        private void handleHelpCommand() {
+            StringBuilder help = new StringBuilder();
+            help.append("============================================================\n");
+            help.append("                  마피아 게임 명령어 도움말\n");
+            help.append("============================================================\n\n");
+
+            help.append("📖 역할 가이드:\n");
+            help.append("  /가이드 또는 /역할      - 자신의 역할 가이드 보기\n");
+            help.append("  /가이드 마피아          - 특정 역할 가이드 보기\n");
+            help.append("  예시: /가이드 의사, /가이드 경찰\n\n");
+
+            help.append("📊 통계 조회:\n");
+            help.append("  /통계 또는 /전적        - 자신의 통계 보기\n");
+            help.append("  /통계 플레이어이름      - 특정 플레이어 통계 보기\n");
+            help.append("  예시: /통계 Player1\n\n");
+
+            help.append("😊 감정 표현:\n");
+            help.append("  /감정                   - 사용 가능한 감정 목록 보기\n");
+            help.append("  /감정 좋아요            - 감정 표현하기\n");
+            help.append("  /감정 좋아요 Player1    - 특정 플레이어에게 감정 표현\n\n");
+
+            help.append("❓ 기타:\n");
+            help.append("  /도움말 또는 /명령어    - 이 도움말 보기\n\n");
+
+            help.append("============================================================\n");
+
+            WriteOne(help.toString());
+            AppendText(UserName + " 도움말 조회");
+        }
+
+        /**
+         * 귓속말 명령어 처리 (한글 버전)
+         * 프로토콜: /귓속말 대상 메시지
+         *
+         * @param msg 메시지
+         */
+        private void handleWhisperCommand(String msg) {
+            // /귓속말 대상 메시지 형식 파싱
+            String[] parts = msg.trim().split("\\s+", 3);
+
+            if (parts.length < 3) {
+                WriteOne("사용법: /귓속말 대상플레이어 메시지내용\n");
+                WriteOne("예시: /귓속말 Player1 안녕하세요\n");
+                return;
+            }
+
+            String receiver = parts[1];
+            String content = parts[2];
+
+            // 낮 시간에만 쪽지 가능
+            if (!gamePhase.equals("DAY")) {
+                WriteOne("SYSTEM: 낮 시간에만 귓속말을 보낼 수 있습니다.\n");
+                return;
+            }
+
+            // 죽은 플레이어는 쪽지 불가
+            if (aliveStatus.get(UserName) != null && !aliveStatus.get(UserName)) {
+                WriteOne("SYSTEM: 죽은 플레이어는 귓속말을 보낼 수 없습니다.\n");
+                return;
+            }
+
+            // 쪽지 전송
+            WhisperResult result = whisperManager.sendWhisper(UserName, receiver, content);
+
+            if (result.isSuccess()) {
+                WriteOne("SYSTEM: " + receiver + "님에게 익명 귓속말을 보냈습니다.\n");
+
+                // 수신자에게 전송
+                for (UserService user : UserVec) {
+                    if (user.UserName.equals(receiver)) {
+                        user.WriteOne("💬 [익명 귓속말]: " + content + "\n");
+                        break;
+                    }
+                }
+
+                AppendText("[귓속말] " + UserName + " -> " + receiver + ": " + content);
+            } else {
+                WriteOne("SYSTEM: " + result.getMessage() + "\n");
+            }
+        }
+
+        /**
+         * 감정 표현 명령어 처리 (한글 버전)
+         * 프로토콜: /감정 또는 /감정 감정이름 또는 /감정 감정이름 대상
+         *
+         * @param msg 메시지
+         */
+        private void handleEmotionCommand(String msg) {
+            String[] parts = msg.trim().split("\\s+", 3);
+
+            // 감정 목록 보기
+            if (parts.length == 1) {
+                showEmotionList();
+                return;
+            }
+
+            // 죽은 플레이어는 감정 표현 불가
+            if (aliveStatus.get(UserName) != null && !aliveStatus.get(UserName)) {
+                WriteOne("SYSTEM: 죽은 플레이어는 감정 표현을 할 수 없습니다.\n");
+                return;
+            }
+
+            String emotionName = parts[1];
+            String target = parts.length == 3 ? parts[2] : null;
+
+            // 한글 이름을 ID로 변환
+            String emotionId = getEmotionIdFromName(emotionName);
+
+            if (emotionId == null) {
+                WriteOne("SYSTEM: 알 수 없는 감정입니다. '/감정'으로 목록을 확인하세요.\n");
+                return;
+            }
+
+            // 감정 표현
+            EmotionResult result = emotionManager.express(UserName, emotionId, target);
+
+            if (result.isSuccess()) {
+                String emotionEmoji = result.getEmotion().getIcon();
+                String emotionDispName = result.getEmotion().getName();
+
+                // 모든 살아있는 플레이어에게 브로드캐스트
+                String broadcastMsg = target != null
+                    ? "💫 " + UserName + "님이 " + target + "님에게 " + emotionEmoji + " " + emotionDispName + "\n"
+                    : "💫 " + UserName + "님이 " + emotionEmoji + " " + emotionDispName + "\n";
+
+                for (UserService user : UserVec) {
+                    if (aliveStatus.get(user.UserName) != null && aliveStatus.get(user.UserName)) {
+                        user.WriteOne(broadcastMsg);
+                    }
+                }
+
+                AppendText("[감정] " + UserName + ": " + emotionEmoji + " " + emotionDispName +
+                          (target != null ? " -> " + target : ""));
+            } else {
+                WriteOne("SYSTEM: " + result.getMessage() + "\n");
+            }
+        }
+
+        /**
+         * 감정 목록 표시
+         */
+        private void showEmotionList() {
+            StringBuilder list = new StringBuilder();
+            list.append("============================================================\n");
+            list.append("                     사용 가능한 감정\n");
+            list.append("============================================================\n\n");
+
+            list.append("😊 긍정적 감정:\n");
+            list.append("  👍 좋아요        ❤️ 하트         😂 웃음\n");
+            list.append("  👏 박수          🔥 불\n\n");
+
+            list.append("😠 부정적 감정:\n");
+            list.append("  👎 싫어요        😢 울음         😠 화남\n\n");
+
+            list.append("😐 중립적 감정:\n");
+            list.append("  🤔 생각          ❓ 물음표       ❗ 느낌표\n");
+            list.append("  💤 잠\n\n");
+
+            list.append("🎮 게임 특화:\n");
+            list.append("  😱 충격          💀 해골         👻 유령\n");
+            list.append("  🕵️ 탐정          🔪 칼           🛡️ 방패\n");
+            list.append("  ✝️ 십자가\n\n");
+
+            list.append("사용법:\n");
+            list.append("  /감정 좋아요             - 모두에게 감정 표현\n");
+            list.append("  /감정 좋아요 Player1     - 특정 플레이어에게 감정 표현\n");
+            list.append("  /감정 탐정 Player2       - 다른 감정 사용 예시\n\n");
+
+            list.append("============================================================\n");
+
+            WriteOne(list.toString());
+        }
+
+        /**
+         * 한글 감정 이름을 영어 ID로 변환
+         */
+        private String getEmotionIdFromName(String name) {
+            switch(name) {
+                case "좋아요": return "THUMBS_UP";
+                case "싫어요": return "THUMBS_DOWN";
+                case "하트": return "HEART";
+                case "웃음": return "LAUGH";
+                case "울음": return "CRY";
+                case "화남": return "ANGRY";
+                case "충격": return "SHOCKED";
+                case "생각": return "THINK";
+                case "박수": return "CLAP";
+                case "불": return "FIRE";
+                case "해골": return "SKULL";
+                case "유령": return "GHOST";
+                case "탐정": return "DETECTIVE";
+                case "칼": return "KNIFE";
+                case "방패": return "SHIELD";
+                case "십자가": return "CROSS";
+                case "물음표": return "QUESTION";
+                case "느낌표": return "EXCLAMATION";
+                case "잠": return "ZZZ";
+                default: return null;
+            }
+        }
+
+        /**
          * 투표 처리
          *
          * @param msg 메시지
@@ -2611,14 +3191,35 @@ public class MafiaGameServer extends JFrame {
 
             // 투표 처리
             if (voteCount.containsKey(target)) {
-                int votes = role.equals("POLITICIAN") ? 2 : 1;
+                // 투표 수 계산: 정치인(2표), 산타 선물(2표), 일반(1표)
+                int votes = 1;
+                String voteReason = "";
+
+                if (role.equals("POLITICIAN")) {
+                    votes = 2;
+                    voteReason = " (정치인 - 2표)";
+                } else if (christmasEventActive && UserName.equals(santaGiftReceiver)) {
+                    votes = 2;
+                    voteReason = " 🎁 (산타의 선물 - 2표)";
+                }
+
                 voteCount.put(target, voteCount.get(target) + votes);
 
                 // 투표한 플레이어를 기록
                 hasVotedThisRound.add(UserName);
 
-                AppendText(UserName + "(" + role + ") -> " + target + " 투표 (" + votes + "표)");
-                WriteOne("SYSTEM: [" + target + "]님에게 투표했습니다." + (votes == 2 ? " (2표)" : "") + "\n");
+                // VoteTracker에 등록 (실시간 추적)
+                mafia.game.features.VoteTracker.VoteCastResult voteResult =
+                    voteTracker.castVote(UserName, target);
+
+                AppendText(UserName + "(" + role + ") -> " + target + " 투표 (" + votes + "표)" + voteReason);
+                WriteOne("SYSTEM: [" + target + "]님에게 투표했습니다." + voteReason + "\n");
+
+                // 실시간 투표 현황 브로드캐스트
+                int currentVotes = voteTracker.getVoteCount(target);
+                double voteRate = voteTracker.calculateVoteRate();
+                WriteAll(String.format("SYSTEM: 💫 %s님이 투표했습니다. (참여율: %.0f%%)\n",
+                                      UserName, voteRate * 100));
 
                 // 마담의 유혹 능력 (투표 시 대상 유혹 -> 찬반투표 때 알림)
                 if (role.equals("MADAME")) {
@@ -2674,6 +3275,43 @@ public class MafiaGameServer extends JFrame {
          * @param msg 메시지
          */
         private void handleChatMessage(String msg) {
+            // 명령어 체크 (채팅 메시지에서 명령어 추출)
+            // 형식: [Player] /command args
+            String lowerMsg = msg.toLowerCase();
+
+            // 도움말
+            if (lowerMsg.contains("/help") || msg.contains("/도움말") || msg.contains("/명령어")) {
+                handleHelpCommand();
+                return;
+            }
+            // 역할 가이드
+            else if (lowerMsg.contains("/guide") || msg.contains("/가이드") || msg.contains("/역할")) {
+                int cmdIndex = lowerMsg.indexOf("/guide");
+                if (cmdIndex == -1) cmdIndex = msg.indexOf("/가이드");
+                if (cmdIndex == -1) cmdIndex = msg.indexOf("/역할");
+                String command = msg.substring(cmdIndex);
+                handleGuideCommand(command);
+                return;
+            }
+            // 통계
+            else if (lowerMsg.contains("/stats") || msg.contains("/통계") || msg.contains("/전적")) {
+                int cmdIndex = lowerMsg.indexOf("/stats");
+                if (cmdIndex == -1) cmdIndex = msg.indexOf("/통계");
+                if (cmdIndex == -1) cmdIndex = msg.indexOf("/전적");
+                String command = msg.substring(cmdIndex);
+                handleStatsCommand(command);
+                return;
+            }
+            // 감정 표현
+            else if (lowerMsg.contains("/emotion") || msg.contains("/감정") || msg.contains("/이모지")) {
+                int cmdIndex = lowerMsg.indexOf("/emotion");
+                if (cmdIndex == -1) cmdIndex = msg.indexOf("/감정");
+                if (cmdIndex == -1) cmdIndex = msg.indexOf("/이모지");
+                String command = msg.substring(cmdIndex);
+                handleEmotionCommand(command);
+                return;
+            }
+
             if (gamePhase.equals("FINAL_DEFENSE")) {
                 handleFinalDefenseChat(msg);
             } else if (gamePhase.equals("NIGHT")) {
